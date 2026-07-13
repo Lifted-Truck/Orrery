@@ -73,3 +73,19 @@ history; supersede with a new numbered entry.
    its own CLAUDE.md whose §Domain is that module's spec. This is the first
    composite scaffold in the ecosystem; if it holds, abstract it into a
    reusable procedure (autonomous kit — the "compose" variant of spinup).
+
+10. **O0 ratified; O1 shell built core-first (framework-free + ctest before the
+    JUCE/auval dance)** (2026-07-13, human at O0). The manifest, the rung-2→3
+    path (DECISIONS #2), and `sequencer-studio-architecture.md` are ratified and
+    frozen-for-Phase-1 — no §5 free-transport variant and no §2.4 pitch-native
+    resolution until each is separately human-gated (both booked post-O2).
+    Fixed two off-by-one manifest cross-refs found at ratification (torus
+    #8→#9, kuramoto #7→#8). O1 builds the shell as a **pure C++20 core** (clock
+    math, offset layer, MIDI-router mapping, trace, PCG32) gated by deterministic
+    `ctest`; the JUCE VST3/AU wrapper + codesign-seal + `auval` land as a
+    follow-on (O1b) per the machine-local build gotchas. Rejected: building the
+    JUCE plugin shell up front — the contract logic (latch timing, lock/generator
+    coexistence, trace round-trip, bit-identical determinism) is verifiable
+    without a plugin host, and the framework-free-core doctrine keeps UI/IO/time
+    in thin adapters. Time/IO/threading (AudioPlayHead read, MIDI bytes, ring-
+    buffer drain) stay out of the core, behind adapter seams O1b fills in.

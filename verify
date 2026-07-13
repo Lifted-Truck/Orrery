@@ -2,20 +2,37 @@
 # verify — oracle dispatcher for Orrery. Usage: ./verify fast|full|report
 # Contract: exit 0 = green, nonzero = red. Writes .harness/last-verify.json.
 #
-# PRE-BUILD STAGE (O0): no C++ build exists yet, so `fast` validates the
-# scaffold's structural coherence only. Once the CMake build lands (O1),
-# extend fast() with `cmake --build <abs> && ctest` and full() with the
-# audio-plugin validation dance (auval SUCCEEDED, codesign --verify) per the
-# global CLAUDE.md build gotchas. Do NOT claim a green build gate until then.
+# STAGE O1 (core-build): `fast` runs the structural scaffold gate AND the
+# framework-free core build + ctest (shell/core — clock, offset layer, router,
+# trace, determinism). `full` == `fast` until the JUCE plugin wrapper lands at
+# O1b, when full() gains the audio-plugin validation dance (auval SUCCEEDED,
+# codesign --verify) per the global CLAUDE.md build gotchas. Absolute build
+# path (the CC sandbox resets cwd between calls). Do NOT claim a plugin-loadable
+# gate until O1b wires auval.
 set -uo pipefail
-cd "$(dirname "$0")"
+ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 TARGET="${1:-fast}"; HARNESS_DIR=".harness"; mkdir -p "$HARNESS_DIR"
+BUILD_DIR="$ROOT/build"
 
 record() {
   local h; h=$(git rev-parse --short HEAD 2>/dev/null || echo no-git)
-  printf '{"target":"%s","exit":%d,"git":"%s","ts":"%s","stage":"pre-build"}\n' \
+  printf '{"target":"%s","exit":%d,"git":"%s","ts":"%s","stage":"O1-core-build"}\n' \
     "$1" "$2" "$h" "$(date -u +%FT%TZ)" > "$HARNESS_DIR/last-verify.json"
   return "$2"
+}
+
+# Framework-free core: configure (once), build (absolute path), run ctest.
+core_build() {
+  local rc=0
+  command -v cmake >/dev/null 2>&1 || { echo "verify: cmake not found" >&2; return 1; }
+  if [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
+    cmake -S "$ROOT" -B "$BUILD_DIR" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug \
+      >/dev/null 2>&1 || { echo "verify: cmake configure failed" >&2; return 1; }
+  fi
+  cmake --build "$BUILD_DIR" -j"$(sysctl -n hw.ncpu 2>/dev/null || echo 4)" \
+    >/dev/null 2>&1 || { echo "verify: core build failed" >&2; return 1; }
+  ( cd "$BUILD_DIR" && ctest --output-on-failure ) || rc=1
+  return $rc
 }
 
 fast() {
@@ -54,11 +71,15 @@ if os.path.isdir(edir):
                   f"(copy {edir}/_template/)"); bad=1
 sys.exit(bad)
 PY
-  [ $ok -eq 0 ] && echo "verify[fast]: scaffold structurally coherent (pre-build stage)"
-  return $ok
+  if [ $ok -ne 0 ]; then return $ok; fi
+  echo "verify: scaffold structurally coherent"
+  # O1 build gate: framework-free core builds + all ctests pass.
+  core_build || return 1
+  echo "verify[fast]: core build + ctest green (O1)"
+  return 0
 }
 
-full() { fast; }  # identical until the build exists (O1)
+full() { fast; }  # identical until the JUCE plugin wrapper + auval land (O1b)
 
 case "$TARGET" in
   fast)   fast;  record fast  $? ;;

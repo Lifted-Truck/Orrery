@@ -1,6 +1,6 @@
 {
   "schema": "project-manifest.0 (draft — kit v2 will formalize); COMPOSITE variant",
-  "status": "PROVISIONAL — scaffolded 2026-07-12; engines/ reorg + 3 engines ingested 2026-07-13; human to ratify at O0 gate",
+  "status": "RATIFIED 2026-07-13 (O0 gate — human): manifest, rung-2→3 path, and contract frozen-for-Phase-1. O1 studio-shell CORE done (shell/core, framework-free, 6/6 ctests green via ./verify fast); O1b (JUCE VST3/AU wrapper + auval) next.",
   "composite": {
     "kind": "umbrella — one plugin, contract-bound sub-territories",
     "contract": "sequencer-studio-architecture.md",
@@ -10,8 +10,8 @@
       { "path": "engines/elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
       { "path": "engines/measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
       { "path": "engines/probable-euclid", "role": "engine", "spec": "probable-euclid-spec.md", "prototype": "probable-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
-      { "path": "engines/torus-euclid", "role": "engine", "spec": "torus-euclid-spec.md", "prototype": "torus-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated — first PITCH-generating engine; needs contract note (DECISIONS #8)" },
-      { "path": "engines/kuramoto-rotors", "role": "engine", "spec": "kuramoto-rotors-spec.md", "prototype": "kuramoto-rotors.html", "contract": "IFreeTransportEngine (NOT YET IN CONTRACT)", "status": "spec validated — BUILD-BLOCKED on the free-transport contract variant (DECISIONS #7)" },
+      { "path": "engines/torus-euclid", "role": "engine", "spec": "torus-euclid-spec.md", "prototype": "torus-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated — first PITCH-generating engine; needs contract note (DECISIONS #9)" },
+      { "path": "engines/kuramoto-rotors", "role": "engine", "spec": "kuramoto-rotors-spec.md", "prototype": "kuramoto-rotors.html", "contract": "IFreeTransportEngine (NOT YET IN CONTRACT)", "status": "spec validated — BUILD-BLOCKED on the free-transport contract variant (DECISIONS #8)" },
       { "path": "engines/coupled-rings", "role": "engine", "spec": null, "prototype": "coupled-rings.html", "contract": "IEngine (tick/latch)", "status": "SPEC GAP — build blocked until spec written (O4a)" }
     ]
   },

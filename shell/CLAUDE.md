@@ -31,6 +31,35 @@ The plugin shell and every shared service from the contract:
 - The offset layer never mutates engine state; it decorates the engine's
   `TriggerEvent`s downstream. Keep the engine→offset→router direction one-way.
 
+## Core map (O1 — `shell/core/`, framework-free, ctest-gated)
+Built core-first (DECISIONS #10): pure C++20, no JUCE, so the contract logic is
+verifiable without a plugin host. The JUCE VST3/AU wrapper + `auval` land at O1b.
+- `include/orrery/Contract.h` — **the IEngine seam** (§1): `IEngine`,
+  `TickContext`, `GestureEvent`, `MidiPerturbation`, `Chunk`, `TraceWriter`.
+  Frozen-for-Phase-1: no free-transport variant (#8), no pitch-native path (#9).
+- `include/orrery/Types.h` — POD types crossing the seam (`TriggerEvent`,
+  `OffsetCell`, clock/transport/latch/router structs, `kMaxSources = 32`).
+- `include/orrery/Pcg32.h` — deterministic PCG32 (§6); one stream per slot +
+  one for the offset layer, from a single project seed.
+- `Clock.{h,cpp}` (§3) — pure latch math: per-block boundaries, sample-accurate
+  offsets, BAR/HALF/STEP, `barsPerLap`, lap-phase→ppq→sample. No wall clock.
+- `OffsetLayer.{h,cpp}` (§2) — **the coexistence mechanism**: cells + locks +
+  `walk`/`accent` generators writing at bar boundaries, skipping locked cells;
+  output resolution. `contour`/`arp`/`scaleQuant` are O5.
+- `MidiRouter.{h,cpp}` (§4) — pure mapping (channel/note-map/gate/quantizeOut);
+  MIDI byte emission + input matrix are O1b adapters.
+- `Trace.{h,cpp}` (§6) — JSONL writer + parser; lossless round-trip.
+- `StubEngine.{h,cpp}` — smallest real `IEngine`; proves the slot. Elastic
+  Euclid replaces it at O2.
+- `tests/` — the O1 Layer-0 gate (`./verify fast`): PCG32 reproducibility,
+  clock ±1-sample timing sweep, offset lock/generator coexistence, trace
+  round-trip, stub sourceId stability, whole-pipeline bit-identity + save/load.
+
+**RT-safety is by construction here** (fixed arrays, no heap on the tick path).
+The *enforceable* no-alloc gate (allocation hook / ASAN on the real audio
+callback) is an O1b/O2 item — there is no `processBlock` to instrument yet.
+Don't claim that gate green until it runs.
+
 ## Do not
 Reach into an engine's internals (only the `IEngine` interface); emit MIDI
 from an engine; change the contract without a DECISIONS entry + human gate.

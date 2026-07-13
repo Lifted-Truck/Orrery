@@ -11,13 +11,23 @@
 
 - **O0 — Scaffold + contract ratification.** Repo, charter, sub-territory
   CLAUDE.md, manifest, Tonality brief filed. *Gate: human ratifies the
-  manifest, the rung path, and the contract as frozen-for-Phase-1.* **← here**
-- **O1 — Studio shell.** Clock service (host-synced, sample-accurate latch
-  callbacks, manual TICK), one engine slot, offset layer with `walk` +
-  `accent` + hand editing (lock cells), MIDI router, trace (JSONL ring
-  buffer). No engine yet — a stub engine proves the slot. *Gate: shell builds
-  as a loadable VST3/AU (codesign seal verified, `auval` SUCCEEDED); offset
-  layer lock/generator coexistence unit-tested; trace round-trips.*
+  manifest, the rung path, and the contract as frozen-for-Phase-1.*
+  **✅ RATIFIED 2026-07-13 (DECISIONS #10).**
+- **O1 — Studio shell (core).** ✅ **DONE 2026-07-13** — built core-first
+  (DECISIONS #10): `shell/core/` framework-free C++20 — clock service
+  (host-synced latch math, sample-accurate offsets, BAR/HALF/STEP, `barsPerLap`),
+  one engine slot proven by `StubEngine`, offset layer with `walk` + `accent` +
+  hand-edit locks, MIDI-router mapping, JSONL trace (writer + parser). *Gate met
+  (`./verify fast`): offset lock/generator coexistence unit-tested, trace
+  round-trips, whole-pipeline determinism bit-identical, clock ±1-sample across
+  a rate/tempo/division sweep, stub sourceId stability (§1.2). 6/6 ctests green.*
+  **← here**
+- **O1b — Plugin wrapper + RT gate.** Wrap `orrery_core` in a JUCE VST3/AU
+  instrument (AudioPlayHead→TransportState adapter, SPSC gesture queue, ring-
+  buffer trace drain, MIDI byte emission + input matrix, fallback drum voices).
+  *Gate: builds as a loadable VST3/AU (codesign seal verified, `auval`
+  SUCCEEDED — machine-local, human-run per the global build gotchas); no-alloc
+  in `processBlock` verified (allocation hook / ASAN).*
 - **O2 — Elastic Euclid engine.** Implement the validated spec against the
   `IEngine` contract. *Gate: the spec's acceptance tests all green — §8.1
   equilibrium (E(k,n) recovery), §8.2 determinism bit-identity, §8.3 ±1-sample
