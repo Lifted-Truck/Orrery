@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCAN_DIRS = ["shell/core"]  # engines join this list as they land as C++
+SCAN_DIRS = ["shell/core", "engines"]  # engines are framework-free too
 PATTERNS = [
     re.compile(r"#\s*include\s*[<\"]juce", re.IGNORECASE),
     re.compile(r"\bjuce::"),

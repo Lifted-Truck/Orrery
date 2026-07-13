@@ -34,15 +34,26 @@
   core-boundary gate green (no JUCE in `shell/core`). `./verify full` runs the
   whole plugin build + ctests; `auval`/install are human-run via
   `tools/validate_au.sh`.* **← here; O2 is next.**
-- **O2 — Elastic Euclid engine.** Implement the validated spec against the
-  `IEngine` contract. *Gate: the spec's acceptance tests all green — §8.1
-  equilibrium (E(k,n) recovery), §8.2 determinism bit-identity, §8.3 ±1-sample
-  timing across rates/blocks, §8.4 no-alloc in processBlock, §8.5 k-change
-  latch invariant; behavior matches `elastic-euclid-2.html` reference.*
-  **← this gate is the rung-2→3 escalation trigger:** the IEngine seam is now
-  proven by a real engine.
+- **O2 — Elastic Euclid engine.** ✅ **DONE 2026-07-13.** `engines/elastic-euclid/`
+  implements the validated spec against `IEngine` (physics matched to
+  `elastic-euclid-2.html`). *Gate met: §8.1 equilibrium — E(k,n) is a stable
+  fixed point (18/18) and within-basin perturbations recover to it (72/72),
+  non-trivially (distinct off-equilibrium starts → same Euclidean attractor +
+  demonstrated migration); §8.2 determinism bit-identity (seed+gesture script,
+  + save/load); §8.5 k-change latch invariant; §8.3/§8.4 timing + no-alloc are
+  the shell gates (clock ±1-sample ctest, RT no-alloc harness now drives Elastic
+  — 0 allocs/4000 blocks). Basin is finite — recovery beyond ~0.5-cell
+  displacement / with kicks is NOT claimed (measured + documented in the engine
+  CLAUDE.md; §8.1's "adjacent" is load-bearing). AU VALIDATION SUCCEEDED with
+  Elastic in the slot.* **← RUNG-2→3 ESCALATION TRIGGER FIRED: the IEngine seam
+  is proven by a real engine. Remaining engines may now parallelize as organs.**
 
-### Rung 3 — parallelize engines as organs (earned at O2)
+### Rung 3 — parallelize engines as organs (✅ EARNED at O2, 2026-07-13)
+
+> The seam is proven. Each remaining engine is now an independent organ:
+> `engines/<name>/` implementing `IEngine`, its own acceptance-test ctests as
+> the verify gate, merged through the shell contract. The elastic engine is the
+> template (physics core + spec §8 tests + CLAUDE.md basin notes).
 
 - **O3 — Measured Euclid engine** (organ; territory `measured-euclid/`).
   *Gate: its spec §6 acceptance tests green (Euclid recovery, inverse

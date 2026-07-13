@@ -23,10 +23,11 @@ trace + project state fully reconstructs a performance.
   `engines/`). Each has its own spec (source of truth for its internals), a
   validated prototype (reference oracle), and its own acceptance tests. An
   engine may ONLY depend on the contract, never on another engine's internals.
-  Current: elastic-euclid, measured-euclid, probable-euclid, torus-euclid
-  (spec validated); kuramoto-rotors (needs the free-transport contract
-  variant); coupled-rings (spec gap). `engines/_template/` is the intake
-  template.
+  Current: **elastic-euclid (IMPLEMENTED — O2, `IEngine` + spec §8 tests green,
+  in the plugin slot)**; measured-euclid, probable-euclid, torus-euclid
+  (spec validated, not yet built); kuramoto-rotors (needs the free-transport
+  contract variant); coupled-rings (spec gap). `engines/_template/` is the
+  intake template.
 - **`integrations/tonality/`** — the Tonality consumer boundary (scaleQuant +
   pitch via the Tonality JSON contract). One boundary module; pin the version;
   degrade visibly.

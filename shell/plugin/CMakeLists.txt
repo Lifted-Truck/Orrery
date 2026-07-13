@@ -33,7 +33,7 @@ target_include_directories(Orrery PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(Orrery
     PRIVATE
-        orrery_core
+        orrery_elastic
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
@@ -67,7 +67,7 @@ target_compile_definitions(orrery_rt_test PRIVATE
 target_include_directories(orrery_rt_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(orrery_rt_test
     PRIVATE
-        orrery_core
+        orrery_elastic
         juce::juce_audio_utils
         juce::juce_recommended_config_flags)
 add_test(NAME test_rt_noalloc COMMAND orrery_rt_test)

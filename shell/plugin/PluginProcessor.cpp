@@ -45,7 +45,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
         std::make_unique<BoolParam>(P{"walkOn", 1}, "Walk", false),
         std::make_unique<IntParam>(P{"walkStep", 1}, "Walk Step", 0, 6, 1),
         std::make_unique<BoolParam>(P{"accentOn", 1}, "Accent", false),
-        std::make_unique<IntParam>(P{"accentCount", 1}, "Accent Count", 0, 12, 3));
+        std::make_unique<IntParam>(P{"accentCount", 1}, "Accent Count", 0, 12, 3),
+        // Elastic Euclid engine (spec §4).
+        std::make_unique<IntParam>(P{"wells", 1}, "Lattice n", 1, 64, 16),
+        std::make_unique<FloatParam>(P{"repulsion", 1}, "Repulsion",
+            juce::NormalisableRange<float>(0.0f, 2.0f), 1.0f),
+        std::make_unique<FloatParam>(P{"lattice", 1}, "Lattice Pull",
+            juce::NormalisableRange<float>(0.0f, 2.0f), 0.6f),
+        std::make_unique<FloatParam>(P{"damping", 1}, "Damping",
+            juce::NormalisableRange<float>(0.02f, 2.0f), 0.35f),
+        std::make_unique<FloatParam>(P{"relax", 1}, "Relax",
+            juce::NormalisableRange<float>(0.01f, 0.6f), 0.08f,
+            juce::AudioParameterFloatAttributes().withLabel("s")));
     return layout;
 }
 
@@ -62,6 +73,11 @@ OrreryProcessor::OrreryProcessor()
     p_.walkStep    = apvts_.getRawParameterValue("walkStep");
     p_.accentOn    = apvts_.getRawParameterValue("accentOn");
     p_.accentCount = apvts_.getRawParameterValue("accentCount");
+    p_.wells       = apvts_.getRawParameterValue("wells");
+    p_.repulsion   = apvts_.getRawParameterValue("repulsion");
+    p_.lattice     = apvts_.getRawParameterValue("lattice");
+    p_.damping     = apvts_.getRawParameterValue("damping");
+    p_.relax       = apvts_.getRawParameterValue("relax");
 }
 
 OrreryProcessor::~OrreryProcessor() {
@@ -74,6 +90,7 @@ void OrreryProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) 
     sampleRate_ = sampleRate;
     slotRng_.seed(projectSeed_, 0);
     offset_.seed(projectSeed_, 0xFFFF);
+    engine_.seed(projectSeed_, 1);   // slot 0's engine randomness stream
     voices_.prepare(sampleRate);
     pendingCount_ = 0;
     lastK_ = -1;
@@ -112,6 +129,13 @@ void OrreryProcessor::applyParams() {
     a.enabled = *p_.accentOn > 0.5f;
     a.accents = static_cast<int>(*p_.accentCount);
     a.amount = 24;
+
+    // Elastic Euclid engine parameters (spec §4).
+    engine_.setN(static_cast<int>(*p_.wells));
+    engine_.setRepulsion(*p_.repulsion);
+    engine_.setLattice(*p_.lattice);
+    engine_.setDamping(*p_.damping);
+    engine_.setRelax(*p_.relax);
 
     // "sources" param → Add/Remove gestures (bounded ≤32 iterations, no alloc).
     const int target = juce::jlimit(1, kMaxSources, static_cast<int>(*p_.sources));

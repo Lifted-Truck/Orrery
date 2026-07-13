@@ -15,8 +15,8 @@
 #include "orrery/Clock.h"
 #include "orrery/MidiRouter.h"
 #include "orrery/OffsetLayer.h"
-#include "orrery/StubEngine.h"
 #include "orrery/Types.h"
+#include "orrery/engines/ElasticEuclid.h"
 
 #include "Lockfree.h"
 #include "Voices.h"
@@ -84,7 +84,7 @@ private:
     void sweepPending(const orrery::TransportState& ts, juce::MidiBuffer&);
 
     // ── Core (framework-free) ────────────────────────────────────────────────
-    orrery::StubEngine  engine_;
+    orrery::ElasticEuclid engine_;   // O2: the equilibrium-rhythm engine
     orrery::OffsetLayer offset_;
     orrery::MidiRouter  router_;
     orrery::ClockConfig clockCfg_;
@@ -110,6 +110,12 @@ private:
         std::atomic<float>* walkStep = nullptr;
         std::atomic<float>* accentOn = nullptr;
         std::atomic<float>* accentCount = nullptr;
+        // Elastic Euclid engine params (spec §4).
+        std::atomic<float>* wells = nullptr;
+        std::atomic<float>* repulsion = nullptr;
+        std::atomic<float>* lattice = nullptr;
+        std::atomic<float>* damping = nullptr;
+        std::atomic<float>* relax = nullptr;
     } p_;
     orrery::SpscRing<orrery::GestureEvent, 256>    gestureRing_;
     orrery::SpscRing<orrery::TraceRecordPod, 256>  traceRing_;

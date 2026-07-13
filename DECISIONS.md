@@ -112,3 +112,33 @@ history; supersede with a new numbered entry.
     DAW silently skips the plugin), and a `juce::Thread` destroyed without a
     prior `releaseResources()` asserts (fixed by stopping the drain in the
     destructor too — surfaced by `auval`).
+
+12. **O2: Elastic Euclid implemented; rung-2→3 escalation fired; equilibrium
+    gate characterized honestly** (2026-07-13). `engines/elastic-euclid/`
+    implements `IEngine` with physics matched to `elastic-euclid-2.html`
+    (K=rep·0.004, A=lat·3, c=damp·8, ε=4e-4, semi-implicit Euler, SUB=24,
+    double). Two contract-shaping choices: (a) **sourceId = particle array
+    index** (dense, LIFO), not the prototype's monotonic display id — the
+    offset layer needs ids in [0,32) and array identity preserves the LIFO-
+    survivor invariant (§1.2); (b) the engine **owns its PCG32** (seeded per
+    slot by the shell via `seed()`) because gesture-time randomness (kick/add-
+    jitter) has no `TickContext`. With O2's gate green, the **rung-2→3
+    escalation trigger fires** (DECISIONS #2): the seam is proven by a real
+    engine; remaining engines parallelize as organs.
+    **Equilibrium gate — epistemic-discipline note.** First cut of §8.1 passed
+    18/18 and I was suspicious of the comfortable result; it was TRIVIAL (jitter
+    < half a lattice cell → the start already quantized correctly). Five build-
+    time probe sweeps then established the real behavior: E(k,n) is a stable
+    *fixed point* (exact starts hold it, 18/18) but only a *local* attractor —
+    within-basin perturbations (≲0.4 cell, no kick) recover (72/72), but beyond
+    ~0.5 cell / with kicks the system falls into metastable non-Euclid minima
+    (recovery ~50–90%); convergence completes by ~200 ticks or never; the
+    settled state sits ~0.016 RMS off exact cells (E(k,n) is maximally, not
+    perfectly, even). The gate asserts the two GUARANTEED properties (stability
+    + within-basin recovery) non-trivially, and the basin limit is documented
+    in the engine CLAUDE.md — NOT weakened away. §8.1's word "adjacent" is
+    load-bearing; global convergence from arbitrary starts is not a property of
+    this model. Rejected: keeping the trivial 18/18 test (would have "passed"
+    while testing nothing); asserting global convergence (false — the traps are
+    real); tuning params to force convergence (would change the validated
+    prototype's behavior).

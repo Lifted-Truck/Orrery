@@ -1,13 +1,13 @@
 {
   "schema": "project-manifest.0 (draft — kit v2 will formalize); COMPOSITE variant",
-  "status": "RATIFIED 2026-07-13 (O0). O1 core done (shell/core, framework-free). O1b done: JUCE 8.0.14 VST3/AU/Standalone (shell/plugin) — AU VALIDATION SUCCEEDED, codesign seal VALID, RT no-alloc gate green, core-boundary gate green. 8/8 ctests via ./verify full. O2 (Elastic Euclid — rung-2→3 trigger) next.",
+  "status": "RATIFIED 2026-07-13 (O0). O1 core + O1b plugin done (AU VALIDATION SUCCEEDED). O2 DONE: engines/elastic-euclid implements IEngine, spec §8 acceptance tests green (equilibrium 18/18 stable + 72/72 basin recovery, determinism, latch invariant), wired into the plugin slot (AU re-validated with Elastic). 11/11 ctests via ./verify full. RUNG-2→3 ESCALATION FIRED — seam proven; remaining engines parallelize as organs.",
   "composite": {
     "kind": "umbrella — one plugin, contract-bound sub-territories",
     "contract": "sequencer-studio-architecture.md",
     "engines_dir": "engines",
     "territories": [
       { "path": "shell", "role": "host", "note": "owns the contract implementation" },
-      { "path": "engines/elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
+      { "path": "engines/elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "contract": "IEngine (tick/latch)", "status": "IMPLEMENTED (O2) — src/ElasticEuclid.cpp; spec §8 acceptance tests green; wired into the plugin slot; basin finite (documented)" },
       { "path": "engines/measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
       { "path": "engines/probable-euclid", "role": "engine", "spec": "probable-euclid-spec.md", "prototype": "probable-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
       { "path": "engines/torus-euclid", "role": "engine", "spec": "torus-euclid-spec.md", "prototype": "torus-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated — first PITCH-generating engine; needs contract note (DECISIONS #9)" },
