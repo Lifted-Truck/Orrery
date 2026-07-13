@@ -70,6 +70,24 @@ codesign-seal-after-build, `auval`, Release-not-Debug for perf, sandbox
 Follow it verbatim; do not re-derive it. Same repo conventions as AURICLE
 (CMake, single repo, `Source/` split `dsp/`/`model/`/`gui/`).
 
+## Adding an engine (intake — more are coming)
+New engines land as new top-level territory dirs (monorepo — DECISIONS #6).
+`./verify` goes RED on any unregistered territory-shaped dir, so nothing is
+silently half-added. To intake one:
+1. Drop the engine's prototype (`<name>.html`) and, when written, its spec
+   (`<name>-spec.md`) into `<name>/`.
+2. Copy `_engine-template/CLAUDE.md` → `<name>/CLAUDE.md`; fill the slots
+   from the spec/prototype.
+3. Register it in `project.manifest.json` → `composite.territories`
+   (path, role, spec-or-null, prototype, status).
+4. Add its build phase to `ROADMAP.md` (spec-before-build: a prototype-only
+   engine is BLOCKED on writing its spec first — see Coupled Rings, O4a).
+5. `./verify fast` green.
+
+An agent can do steps 2–5 from a landed dir (the template + spec make it a
+scoped task); or notify the maintainer to run them. Either way, verify's
+unregistered-dir check is the safety net.
+
 ## Human gates
 Deleting files, changing the contract (`sequencer-studio-architecture.md`),
 editing `./verify` or acceptance tests, adding a dependency, anything outward-

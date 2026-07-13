@@ -28,17 +28,30 @@ fast() {
   done
   python3 -c "import json;json.load(open('project.manifest.json'))" 2>/dev/null \
     || { echo "verify: manifest is not valid JSON" >&2; ok=1; }
-  # every territory in the manifest exists and has a sub-charter
+  # every territory in the manifest exists + has a sub-charter; AND no
+  # unregistered territory-shaped dir hides (intake safety net — new engines).
   python3 - <<'PY' || ok=1
 import json,os,sys
 m=json.load(open("project.manifest.json"))
 bad=0
+registered=set()
 for t in m["composite"]["territories"]:
-    p=t["path"]
+    p=t["path"]; registered.add(p)
     if not os.path.isdir(p): print(f"verify: territory dir missing: {p}"); bad=1
     if not os.path.isfile(os.path.join(p,"CLAUDE.md")): print(f"verify: territory sub-charter missing: {p}/CLAUDE.md"); bad=1
     spec=t.get("spec")
     if spec and not os.path.isfile(os.path.join(p,spec)): print(f"verify: declared spec missing: {p}/{spec}"); bad=1
+# infra dirs that are not engine territories
+infra={"integrations","traces",".git",".harness",".claude","build","_engine-template"}
+for name in sorted(os.listdir(".")):
+    if not os.path.isdir(name) or name in infra or name in registered or name.startswith("."):
+        continue
+    # a dir looks like an engine territory if it holds a spec or a prototype
+    contents=os.listdir(name)
+    if any(f.endswith("-spec.md") or f.endswith(".html") for f in contents):
+        print(f"verify: UNREGISTERED territory dir '{name}' — add it to "
+              f"project.manifest.json composite.territories + a CLAUDE.md "
+              f"(see _engine-template/)"); bad=1
 sys.exit(bad)
 PY
   [ $ok -eq 0 ] && echo "verify[fast]: scaffold structurally coherent (pre-build stage)"

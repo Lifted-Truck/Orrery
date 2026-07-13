@@ -32,6 +32,19 @@ history; supersede with a new numbered entry.
    implementation. Rejected: reverse-engineering the C++ straight from the
    prototype — the other engines earned their validated specs first; this one
    should too.
+6. **Engines are territories in ONE repo (monorepo), not separate repos**
+   (2026-07-12, human question). The engines compile into one plugin binary,
+   share the audio thread, and share the `IEngine` contract as source (not a
+   versioned package) — they are not independently deployable, so there is
+   nothing to release or version separately. A territory is a subdirectory
+   with an enforced write boundary (the intra-repo organ model, DESIGN §2-3),
+   which is exactly this. Rejected: repo-per-engine — would force the freely-
+   changing contract into a semver'd cross-repo dependency (the full
+   INTEGRATIONS linked-PR protocol) for zero benefit. Separate repos are for
+   independent products with cross-repo contracts (Tonality ↔ consumers), not
+   modules of one build. New engines land as new top-level dirs + a manifest
+   territory entry + a sub-charter; `./verify` flags any unregistered dir.
+
 5. **Composite-project scaffold shape** (2026-07-12). Orrery is scaffolded as
    an umbrella (root charter + contract + integrations + knowledge loop) with
    contract-bound sub-territories (shell + engines), each a mini-project with
