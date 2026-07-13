@@ -21,7 +21,8 @@ juce_add_plugin(Orrery
 
 target_sources(Orrery PRIVATE
     PluginProcessor.cpp
-    TraceDrain.cpp)
+    TraceDrain.cpp
+    MidiOut.cpp)
 
 target_compile_definitions(Orrery PRIVATE
     ORRERY_WITH_EDITOR=1
@@ -60,7 +61,8 @@ juce_add_console_app(orrery_rt_test PRODUCT_NAME orrery_rt_test)
 target_sources(orrery_rt_test PRIVATE
     tests/test_rt_noalloc.cpp
     PluginProcessor.cpp
-    TraceDrain.cpp)
+    TraceDrain.cpp
+    MidiOut.cpp)
 target_compile_definitions(orrery_rt_test PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0)

@@ -19,6 +19,7 @@
 #include "orrery/engines/ElasticEuclid.h"
 
 #include "Lockfree.h"
+#include "MidiOut.h"
 #include "Voices.h"
 
 namespace orrery {
@@ -73,6 +74,8 @@ public:
     // Headless tests disable the off-thread trace drain (no file IO / no second
     // allocating thread) before prepareToPlay.
     void setTraceDrainEnabled(bool on) { enableTraceDrain_ = on; }
+    // Headless tests also skip opening a real CoreMIDI virtual port.
+    void setVirtualMidiEnabled(bool on) { enableVirtualMidi_ = on; }
     int64_t vizGeneration() const { return genViz_.load(std::memory_order_relaxed); }
     int vizSources() const { return kViz_.load(std::memory_order_relaxed); }
 
@@ -116,10 +119,13 @@ private:
         std::atomic<float>* lattice = nullptr;
         std::atomic<float>* damping = nullptr;
         std::atomic<float>* relax = nullptr;
+        std::atomic<float>* internalAudio = nullptr;  // gate the fallback voices
     } p_;
     orrery::SpscRing<orrery::GestureEvent, 256>    gestureRing_;
     orrery::SpscRing<orrery::TraceRecordPod, 256>  traceRing_;
-    std::unique_ptr<TraceDrain> drain_;
+    orrery::SpscRing<orrery::MidiOutEvent, 512>    midiOutRing_;   // audio → virtual port
+    std::unique_ptr<TraceDrain>    drain_;
+    std::unique_ptr<VirtualMidiOut> virtualMidi_;
 
     double  sampleRate_ = 48000.0;
     int     lastK_      = -1;         // for the "sources" param → gesture diff
@@ -129,6 +135,7 @@ private:
     std::atomic<int>     kViz_{8};
     int64_t manualGen_ = -1;
     bool    enableTraceDrain_ = true;
+    bool    enableVirtualMidi_ = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OrreryProcessor)
 };

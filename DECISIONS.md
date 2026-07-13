@@ -186,3 +186,22 @@ history; supersede with a new numbered entry.
     merged via the contract) — the rung-3 model in practice. The plugin slot
     stays Elastic; per-engine param routing + engine selection in the shell is
     a later phase (the generic-param plumbing doesn't yet cover 3 param sets).
+
+15. **MIDI-out routing: dual path (plugin-API bus + CoreMIDI virtual port) with
+    an internal-audio toggle** (2026-07-13, human — "needs to output MIDI to
+    other tracks, but I like the audio too"; primary host Ableton). Orrery emits
+    notes on BOTH the plugin-API event bus (sample-accurate; Reaper/Bitwig/
+    Cubase route it) AND a self-opened CoreMIDI virtual source named "Orrery"
+    (the ONLY way to feed other **Ableton Live** tracks — Live's MIDI From taps
+    before the instrument and cannot capture plugin-generated MIDI; documented
+    Ableton workaround is a virtual MIDI bus). Audio-thread → SPSC ring → drain
+    thread → `MidiOutput::sendMessageNow` (RT-safe, ~1 ms; reuses the trace-drain
+    pattern). An `internalAudio` APVTS bool (default on) gates the fallback
+    voices so Orrery can be a silent MIDI generator OR also sound. See
+    `shell/plugin/ROUTING.md`. RT no-alloc gate still green (0 allocs/4000
+    blocks — the ring push is alloc-free); AU VALIDATION SUCCEEDED. Rejected:
+    plugin-API MIDI-out only (invisible to Live, the primary host); sending
+    CoreMIDI from the audio thread (RT risk); a Logic `aumi` build now (deferred
+    — roadmap). Known: auval prints a benign debug-only `MessageManager` leak
+    (the CoreMIDI subsystem instantiates JUCE's message-thread singleton, which
+    auval's minimal host doesn't tear down; real DAWs own it — no leak there).

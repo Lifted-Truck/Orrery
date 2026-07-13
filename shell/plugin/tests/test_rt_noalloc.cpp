@@ -40,7 +40,8 @@ int main() {
     const int    block = 512;
 
     OrreryProcessor proc;
-    proc.setTraceDrainEnabled(false);   // no file IO / no second thread
+    proc.setTraceDrainEnabled(false);    // no file IO / no second thread
+    proc.setVirtualMidiEnabled(false);   // no real CoreMIDI port in a headless test
     proc.prepareToPlay(sr, block);
 
     juce::AudioBuffer<float> buf(2, block);

@@ -70,6 +70,12 @@ build if any `juce`/`JUCE_*` token appears under `shell/core/`.
 - `Lockfree.h` — SPSC ring (atomics, power-of-two, POD) for GUI→audio gestures
   and audio→drain trace. No alloc/lock on the audio thread.
 - `Voices.h` — fixed-capacity fallback drum voices (per-voice seeded noise).
+- `MidiOut.{h,cpp}` — **CoreMIDI virtual source "Orrery"** + drain thread. The
+  Ableton routing path: Live can't route plugin-API MIDI to other tracks, so
+  Orrery opens its own virtual port and mirrors notes there (audio thread → SPSC
+  ring → `sendMessageNow`, ~1 ms, RT-safe). Notes also go on the plugin-API bus
+  for hosts that route it. `internalAudio` param gates the voices. See
+  `ROUTING.md`.
 - `TraceDrain.{h,cpp}` — background `juce::Thread` popping POD trace records and
   formatting JSONL off the audio thread. **Stop it in BOTH `releaseResources()`
   and the destructor** — a host may destroy the processor without releasing, and

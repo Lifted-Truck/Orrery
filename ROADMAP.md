@@ -21,6 +21,12 @@
   (`./verify fast`): offset lock/generator coexistence unit-tested, trace
   round-trips, whole-pipeline determinism bit-identical, clock ±1-sample across
   a rate/tempo/division sweep, stub sourceId stability (§1.2). 6/6 ctests green.*
+- **O1c — MIDI-out routing + audio toggle.** ✅ **DONE 2026-07-13.** Dual MIDI
+  out — plugin-API event bus (Reaper/Bitwig/…) + a self-opened CoreMIDI virtual
+  source "Orrery" (the Ableton path; Live can't route plugin-API MIDI). RT-safe
+  ring→drain send. `internalAudio` toggle makes it a silent MIDI generator or an
+  audible instrument. `shell/plugin/ROUTING.md`; DECISIONS #15. *Follow-up: a
+  Logic `aumi` MIDI-processor build; per-instance port naming.*
 - **O1b — Plugin wrapper + RT gate.** ✅ **DONE 2026-07-13.** `shell/plugin/`
   wraps `orrery_core` in a JUCE 8.0.14 VST3/AU/Standalone instrument:
   AudioPlayHead→TransportState adapter, `renderBlock` seam, mini-scheduler

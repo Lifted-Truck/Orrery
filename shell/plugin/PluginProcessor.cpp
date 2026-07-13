@@ -56,7 +56,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
             juce::NormalisableRange<float>(0.02f, 2.0f), 0.35f),
         std::make_unique<FloatParam>(P{"relax", 1}, "Relax",
             juce::NormalisableRange<float>(0.01f, 0.6f), 0.08f,
-            juce::AudioParameterFloatAttributes().withLabel("s")));
+            juce::AudioParameterFloatAttributes().withLabel("s")),
+        // Internal audio on/off: off → Orrery is a silent MIDI generator
+        // (drive other tracks); on → it also sounds via the fallback voices.
+        std::make_unique<BoolParam>(P{"internalAudio", 1}, "Internal Audio", true));
     return layout;
 }
 
@@ -78,12 +81,14 @@ OrreryProcessor::OrreryProcessor()
     p_.lattice     = apvts_.getRawParameterValue("lattice");
     p_.damping     = apvts_.getRawParameterValue("damping");
     p_.relax       = apvts_.getRawParameterValue("relax");
+    p_.internalAudio = apvts_.getRawParameterValue("internalAudio");
 }
 
 OrreryProcessor::~OrreryProcessor() {
     // The host may destroy us without a releaseResources() first; a juce::Thread
     // must be stopped before deletion (juce_Thread.cpp assertion otherwise).
-    if (drain_) { drain_->signalThreadShouldExit(); drain_->stopThread(500); drain_.reset(); }
+    if (drain_)       { drain_->signalThreadShouldExit(); drain_->stopThread(500); drain_.reset(); }
+    if (virtualMidi_) { virtualMidi_->signalThreadShouldExit(); virtualMidi_->stopThread(500); virtualMidi_.reset(); }
 }
 
 void OrreryProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) {
@@ -101,10 +106,18 @@ void OrreryProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) 
         drain_ = std::make_unique<TraceDrain>(&traceRing_, file);
         drain_->startThread();
     }
+    // Open the CoreMIDI virtual source so hosts (esp. Ableton) can route
+    // Orrery's generated MIDI to other tracks. Notes are pushed from the audio
+    // thread into midiOutRing_ and sent here off-thread.
+    if (enableVirtualMidi_ && virtualMidi_ == nullptr) {
+        virtualMidi_ = std::make_unique<VirtualMidiOut>(&midiOutRing_, "Orrery");
+        virtualMidi_->startThread();
+    }
 }
 
 void OrreryProcessor::releaseResources() {
-    if (drain_) { drain_->signalThreadShouldExit(); drain_->stopThread(500); drain_.reset(); }
+    if (drain_)       { drain_->signalThreadShouldExit(); drain_->stopThread(500); drain_.reset(); }
+    if (virtualMidi_) { virtualMidi_->signalThreadShouldExit(); virtualMidi_->stopThread(500); virtualMidi_.reset(); }
 }
 
 bool OrreryProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -194,6 +207,11 @@ void OrreryProcessor::sweepPending(const TransportState& ts, juce::MidiBuffer& m
             } else {
                 midi.addEvent(juce::MidiMessage::noteOff(e.channel, e.note), off);
             }
+            // Mirror to the CoreMIDI virtual port (Ableton routing path). SPSC
+            // push only — no alloc/lock; the drain thread does the CoreMIDI send.
+            midiOutRing_.push(orrery::MidiOutEvent{
+                static_cast<int16_t>(e.note), static_cast<int16_t>(e.velocity),
+                static_cast<int8_t>(e.channel), static_cast<int8_t>(e.isOn ? 1 : 0)});
         } else {
             pending_[w++] = e;  // still in the future — keep
         }
@@ -237,8 +255,11 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     }
 
     sweepPending(ts, midi);
-    voices_.render(buffer.getArrayOfWritePointers(), buffer.getNumChannels(), numSamples,
-                   p_.gain->load(std::memory_order_relaxed));
+    // Internal audio toggle: when off, Orrery is a silent MIDI generator (MIDI
+    // still flows on the plugin-API bus + the virtual port).
+    if (p_.internalAudio->load(std::memory_order_relaxed) > 0.5f)
+        voices_.render(buffer.getArrayOfWritePointers(), buffer.getNumChannels(), numSamples,
+                       p_.gain->load(std::memory_order_relaxed));
 
     kViz_.store(engine_.sourceCount(), std::memory_order_relaxed);
 }
