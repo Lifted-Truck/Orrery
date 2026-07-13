@@ -56,16 +56,20 @@
 > template (physics core + spec §8 tests + CLAUDE.md basin notes).
 
 - **O3 — Measured Euclid engine** (organ; territory `measured-euclid/`).
-  *Gate: its spec §6 acceptance tests green (Euclid recovery, inverse
-  accuracy, latch invariant, monotone deformation, determinism); matches
-  `measured-euclid.html`.*
+  ✅ **DONE 2026-07-13.** *Gate met: §6 tests green — Euclid recovery 496/496
+  (all k<n≤32, via a tie-robust round-half-up fix, DECISIONS #13), inverse
+  accuracy <1e-6, latch invariant, monotone deformation, determinism.*
 - **O4 — Additional engines** (organs, parallelizable once O2 proves the seam;
   each in `engines/<name>/` with its own verify gate). Build order among these
   is TBD after O2 — the user has landed a pool of validated engines; prioritize
   at O2. Each gate = that engine's spec acceptance tests green + matches its
   prototype (some carry explicit divergence anchors: torus L=0 reproduces the
   prototype layout; kuramoto honest-retrograde replaces the prototype floor).
-  - **probable-euclid** — standard IEngine; ready.
+  - **probable-euclid** — ✅ **DONE 2026-07-13** (organ). §6 gates green:
+    backbone recovery 522/522, determinism, freeze invariant; evenness floor +
+    expected-count claims recalibrated to measured truth (DECISIONS #14).
+    **n capped at 32** (Phase-1: sourceId=step must fit the 32-cell offset
+    layer; n=64 needs an offset-capacity contract change — filed).
   - **torus-euclid** — standard IEngine; ready, BUT its pitch output waits on
     the pitch/note-map contract note (DECISIONS #9). Rhythm layout unblocked.
   - **kuramoto-rotors** — **BLOCKED on a contract change**: needs

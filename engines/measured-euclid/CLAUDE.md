@@ -25,6 +25,19 @@ Euclid recovery (flat measure, q=1, round-half-up ties), inverse accuracy
 deformation (no onset crossings; q=1 collisions emit simultaneous triggers with
 distinct sourceIds), determinism bit-identity.
 
+## Implementation notes (O3 — landed, `src/MeasuredEuclid.cpp`)
+- CDF/invCDF matched to `measured-euclid.html` (piecewise-linear, binary
+  search). `forwardU` exposed so the inverse-accuracy test checks U(invU(u))≈u.
+- **Tie-robust round-half-up** in quantize (spec §6.1 correctness fix): naive
+  `round(t·n)` sends exact half-integer ties DOWN because fp makes them land
+  ~1e-16 below x.5 (e.g. 0.3·15 = 4.4999…982). This broke Euclid recovery for
+  every gcd(k,n)>1 case (9/496). A `+1e-9` bias (≫ fp error, ≪ any real gap)
+  restores round-half-up → E(k,n) recovers for ALL k<n≤32 (496/496). The
+  plugin would otherwise emit wrong Euclidean patterns; this is a real fix, not
+  test-tuning. (DECISIONS #13.)
+- `sourceId` = μ-index (0..k−1); Add/Remove change k (LIFO on the highest
+  index); CurveEdit(value) loads a preset; Drag sets μ-phase.
+
 ## Latch obligation (validated — do NOT "improve")
 Measure + all distribution params latch at the bar boundary; mid-bar edits
 render dimmed (pending) and take effect next downbeat. Continuous recomputation

@@ -20,6 +20,8 @@ option(ORRERY_BUILD_PLUGIN "Build the JUCE VST3/AU/Standalone plugin shell (O1b)
 enable_testing()
 add_subdirectory(shell/core)
 add_subdirectory(engines/elastic-euclid)
+add_subdirectory(engines/measured-euclid)
+add_subdirectory(engines/probable-euclid)
 
 # Framework-isolation gate (doctrine: pure, framework-free cores). Runs in every
 # build — cheap, no compiler/network needed.
