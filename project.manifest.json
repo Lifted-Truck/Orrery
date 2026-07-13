@@ -1,14 +1,18 @@
 {
   "schema": "project-manifest.0 (draft — kit v2 will formalize); COMPOSITE variant",
-  "status": "PROVISIONAL — scaffolded 2026-07-12; human to ratify at O0 gate",
+  "status": "PROVISIONAL — scaffolded 2026-07-12; engines/ reorg + 3 engines ingested 2026-07-13; human to ratify at O0 gate",
   "composite": {
     "kind": "umbrella — one plugin, contract-bound sub-territories",
     "contract": "sequencer-studio-architecture.md",
+    "engines_dir": "engines",
     "territories": [
-      { "path": "shell", "role": "studio host (owns the contract implementation)" },
-      { "path": "elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "status": "spec validated" },
-      { "path": "measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "status": "spec validated" },
-      { "path": "coupled-rings", "role": "engine", "spec": null, "prototype": "coupled-rings.html", "status": "SPEC GAP — build blocked" }
+      { "path": "shell", "role": "host", "note": "owns the contract implementation" },
+      { "path": "engines/elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
+      { "path": "engines/measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
+      { "path": "engines/probable-euclid", "role": "engine", "spec": "probable-euclid-spec.md", "prototype": "probable-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated" },
+      { "path": "engines/torus-euclid", "role": "engine", "spec": "torus-euclid-spec.md", "prototype": "torus-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated — first PITCH-generating engine; needs contract note (DECISIONS #8)" },
+      { "path": "engines/kuramoto-rotors", "role": "engine", "spec": "kuramoto-rotors-spec.md", "prototype": "kuramoto-rotors.html", "contract": "IFreeTransportEngine (NOT YET IN CONTRACT)", "status": "spec validated — BUILD-BLOCKED on the free-transport contract variant (DECISIONS #7)" },
+      { "path": "engines/coupled-rings", "role": "engine", "spec": null, "prototype": "coupled-rings.html", "contract": "IEngine (tick/latch)", "status": "SPEC GAP — build blocked until spec written (O4a)" }
     ]
   },
   "survey": {
@@ -19,19 +23,19 @@
       "earned_by": "genuine contract-bound seams (IEngine) + independently-verifiable engines with their own acceptance tests and reference prototypes — but one shared build/audio-thread. Prove the seam single-threaded (shell + Elastic), then parallelize engines as organs. Human-chosen at O0.",
       "escalation_trigger": "ROADMAP O2 green (IEngine seam proven by Elastic Euclid)"
     },
-    "domain_core_llm_must_not_own": "the physics/measure/onset math — repulsion+lattice integration, inverse-CDF onset placement, Bjorklund equilibrium, sample-accurate scheduling, PCG32 derivation. AI may propose presets/curves/regimes for review; never emits a trigger time or pitch by judgment.",
+    "domain_core_llm_must_not_own": "the physics/measure/onset/field/layout math — integration, inverse-CDF, greedy farthest-point, probability fields, Kuramoto ODE, sample-accurate scheduling, PCG32 derivation. AI may propose presets/curves/regimes for review; never emits a trigger time or pitch by judgment.",
     "oracle_shape": {
-      "goldens": "per-engine acceptance tests (already written in each spec) + the validated HTML prototype as behavioral reference; determinism = bit-identical trace",
+      "goldens": "per-engine acceptance tests (in each spec) + the validated HTML prototype as behavioral reference (some engines carry explicit prototype-divergence regression anchors, e.g. torus L=0, kuramoto retrograde); determinism = bit-identical trace",
       "ci": "C++ build + ctest; audio-plugin validation (auval SUCCEEDED, codesign seal) per global build gotchas; Release for any perf claim"
     },
     "second_implementation": false,
     "consumers_and_providers": {
-      "consumes": ["Tonality (JSON contract for scaleQuant + pitch — boundary module, pinned, degrade-visibly)"],
+      "consumes": ["Tonality (JSON contract for scaleQuant + pitch — boundary module, pinned, degrade-visibly; now also relevant to torus-euclid's native pitch)"],
       "consumed_by": [],
       "note": "trace output is wend-compatible; a trace + state reconstructs a performance"
     },
     "parallel_audit_thread": false,
-    "knowledge_loop_tags": ["engine-contract", "determinism-trace", "rt-safety", "latch-semantics", "offset-layer", "juce-build", "tonality-boundary"],
+    "knowledge_loop_tags": ["engine-contract", "determinism-trace", "rt-safety", "latch-semantics", "offset-layer", "juce-build", "tonality-boundary", "free-transport"],
     "lifespan_autonomy": {
       "lifespan": "long-lived (flagship instrument)",
       "autonomy_tier": "local dev; build/validate/codesign are human-run (machine-local, sandbox-sensitive); contract changes human-gated"

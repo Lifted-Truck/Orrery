@@ -1,7 +1,7 @@
 # CLAUDE.md — elastic-euclid/ (engine territory)
 
-Sub-charter. Read root `../CLAUDE.md` and contract
-`../sequencer-studio-architecture.md` first. Implements the `IEngine`
+Sub-charter. Read root `../../CLAUDE.md` and contract
+`../../sequencer-studio-architecture.md` first. Implements the `IEngine`
 contract; depends on the contract only, never on the shell's internals or
 another engine.
 

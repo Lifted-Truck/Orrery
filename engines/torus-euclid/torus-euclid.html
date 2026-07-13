@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TORUS EUCLID — blue-noise melody</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14181d; --panel: #1b2129; --line: #2a323b;
+    --text: #c9d2da; --dim: #6b7784;
+    --amber: #f0a840; --amber-dim: #8a6425; --cyan: #58c7d4;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --disp: 'Space Grotesk', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--disp); min-height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; align-items: baseline; gap: 14px; padding: 14px 20px 10px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; letter-spacing: 0.18em; font-weight: 700; }
+  header h1 .e2 { color: var(--amber); }
+  header .sub { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  main { flex: 1; display: flex; flex-wrap: wrap; }
+  #stage-wrap { flex: 1 1 460px; display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 360px; }
+  canvas#grid { touch-action: none; cursor: crosshair; max-width: 100%; }
+  aside { flex: 0 1 330px; border-left: 1px solid var(--line); background: var(--panel); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 300px; }
+  @media (max-width: 800px) { aside { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--line); } }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .grow { flex: 1; }
+  label.slider { display: block; }
+  label.slider .lab { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--dim); margin-bottom: 4px; letter-spacing: 0.06em; }
+  label.slider .lab b { color: var(--text); font-weight: 500; }
+  input[type=range] { width: 100%; appearance: none; -webkit-appearance: none; height: 22px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--text); margin-top: -6px; border: 2px solid var(--bg); }
+  input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--cyan); }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--line); }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text); border: 2px solid var(--bg); }
+  button {
+    font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
+    border: 1px solid var(--line); padding: 7px 9px; cursor: pointer; letter-spacing: 0.05em;
+    transition: border-color .12s, color .12s;
+  }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  button.primary { border-color: var(--amber-dim); color: var(--amber); }
+  button.active { background: var(--amber); color: #14181d; border-color: var(--amber); }
+  .seg { display: flex; }
+  .seg button { flex: 1; border-right-width: 0; font-size: 10px; padding: 6px 4px; }
+  .seg button:last-child { border-right-width: 1px; }
+  .seg button.sel { background: var(--line); color: var(--amber); }
+  .sect-title { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.22em; text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+  #readout { font-family: var(--mono); font-size: 11px; color: var(--dim); line-height: 1.7; }
+  #readout b { color: var(--text); font-weight: 500; }
+  .hint { font-family: var(--mono); font-size: 10px; color: var(--dim); line-height: 1.6; }
+  .hint em { color: var(--cyan); font-style: normal; }
+  .hint strong { color: var(--amber); font-weight: 500; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TORUS <span class="e2">EUCLID</span></h1>
+  <span class="sub">maximal evenness on time × pitch · both axes wrap</span>
+</header>
+<main>
+  <div id="stage-wrap"><canvas id="grid"></canvas></div>
+  <aside>
+    <div class="row">
+      <button id="play" class="primary grow">▶ RUN</button>
+      <button id="unpin">⊘ UNPIN ALL</button>
+      <button id="mute">🔊</button>
+    </div>
+
+    <div class="sect-title">Distribution</div>
+    <label class="slider">
+      <span class="lab"><span>events k</span><b id="v-k">9</b></span>
+      <input type="range" id="s-k" min="1" max="32" value="9">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>anisotropy (time ⇄ pitch evenness)</span><b id="v-a">0.50</b></span>
+      <input type="range" id="s-a" min="0" max="100" value="50">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>rotate time</span><b id="v-rt">0</b></span>
+      <input type="range" id="s-rt" min="0" max="31" value="0">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>rotate pitch (diatonic transpose, wraps)</span><b id="v-rp">0</b></span>
+      <input type="range" id="s-rp" min="0" max="13" value="0">
+    </label>
+
+    <div class="sect-title">Lattice</div>
+    <div class="row">
+      <label class="slider grow" style="margin:0">
+        <span class="lab"><span>time steps n</span><b id="v-n">16</b></span>
+        <input type="range" id="s-n" min="8" max="32" value="16">
+      </label>
+      <label class="slider grow" style="margin:0">
+        <span class="lab"><span>pitch rows m</span><b id="v-m">10</b></span>
+        <input type="range" id="s-m" min="4" max="14" value="10">
+      </label>
+    </div>
+    <div class="seg" id="scale-seg">
+      <button data-s="penta" class="sel">PENTA</button>
+      <button data-s="dorian">DORIAN</button>
+      <button data-s="harmin">HARM MIN</button>
+      <button data-s="chrom">CHROM</button>
+    </div>
+    <label class="slider">
+      <span class="lab"><span>tempo</span><b id="v-bpm">120</b></span>
+      <input type="range" id="s-bpm" min="40" max="200" value="120">
+    </label>
+
+    <div id="readout"></div>
+    <div class="hint">
+      Blue-noise over the bar × the octave: events repel in a toroidal metric,
+      so the melody covers time <em>and</em> pitch space evenly, and lines wrap
+      both edges. <strong>Anisotropy</strong> weights the metric — full left:
+      only rhythm matters (pitches may stack); full right: only pitch coverage
+      matters (times may clump into chords). <strong>Click a cell</strong> to pin
+      a note there; <strong>drag</strong> pins to move them; <strong>double-click</strong>
+      unpins. <em>Pinned notes (cyan ring) are constraints</em> — the generative
+      layout distributes the remaining events around them. Rotate-pitch is a
+      diatonic transpose that wraps at the octave. Changes latch at the bar
+      (pending layout shows dimmed).
+    </div>
+  </aside>
+</main>
+
+<script>
+'use strict';
+function wrap(x, n) { return ((x % n) + n) % n; }
+function cdistN(a, b, n) { const d = Math.abs(a - b) % n; return Math.min(d, n - d); }
+
+/* ---------------- State ---------------- */
+const SCALES = {
+  penta:  [0, 2, 4, 7, 9],
+  dorian: [0, 2, 3, 5, 7, 9, 10],
+  harmin: [0, 2, 3, 5, 7, 8, 11],
+  chrom:  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+};
+const P = {
+  n: 16, m: 10, k: 9, aniso: 0.5, rotT: 0, rotP: 0,
+  scale: 'penta', bpm: 120,
+  running: false, muted: false,
+};
+let pinned = [];        // [{t, p}] absolute cells (pre-rotation coords)
+let layout = [];        // generated events [{t, p, rank, pinned}] (pre-rotation)
+let sounding = [];      // latched, rotated events for the current bar
+let dirty = true;
+let playPhase = 0, prevPhase = 0, lastT = null, barIndex = 0, barPulse = 0;
+let flash = new Map();  // "t,p" (rotated coords) -> age
+
+/* ---------------- Toroidal farthest-point layout ---------------- */
+function toroidalD2(a, b) {
+  const dt = cdistN(a.t, b.t, P.n) / P.n;
+  const dp = cdistN(a.p, b.p, P.m) / P.m;
+  const wt = 1 - P.aniso, wp = P.aniso;
+  return wt * dt * dt + wp * dp * dp;
+}
+function computeLayout() {
+  const chosen = pinned.map((c, i) => ({ t: c.t, p: c.p, rank: i, pinned: true }));
+  const k = Math.max(P.k, chosen.length);
+  const cells = [];
+  for (let t = 0; t < P.n; t++) for (let p = 0; p < P.m; p++) cells.push({ t, p });
+  if (chosen.length === 0 && k > 0) chosen.push({ t: 0, p: Math.floor(P.m / 2), rank: 0, pinned: false });
+  while (chosen.length < k) {
+    let best = null, bestScore = -1, bestTie = -1;
+    for (const c of cells) {
+      if (chosen.some(x => x.t === c.t && x.p === c.p)) continue;
+      let mind = Infinity, mindU = Infinity;
+      for (const x of chosen) {
+        mind = Math.min(mind, toroidalD2(c, x));
+        // unweighted tie-break metric
+        const dt = cdistN(c.t, x.t, P.n) / P.n, dp = cdistN(c.p, x.p, P.m) / P.m;
+        mindU = Math.min(mindU, dt * dt + dp * dp);
+      }
+      if (mind > bestScore + 1e-12 || (Math.abs(mind - bestScore) <= 1e-12 && mindU > bestTie + 1e-12)) {
+        bestScore = mind; bestTie = mindU; best = c;
+      }
+    }
+    chosen.push({ t: best.t, p: best.p, rank: chosen.length, pinned: false });
+  }
+  layout = chosen;
+}
+function rotated(ev) {
+  return { t: wrap(ev.t + P.rotT, P.n), p: wrap(ev.p + P.rotP, P.m), rank: ev.rank, pinned: ev.pinned };
+}
+function latch() {
+  computeLayout();
+  sounding = layout.map(rotated);
+  dirty = false;
+}
+
+/* ---------------- Audio (plucked melodic voice) ---------------- */
+let AC = null;
+function audio() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function freqOf(row) {
+  const sc = SCALES[P.scale];
+  const deg = row % sc.length, oct = Math.floor(row / sc.length);
+  return 110 * Math.pow(2, (sc[deg] + 12 * oct) / 12);
+}
+function trigger(ev) {
+  flash.set(ev.t + ',' + ev.p, 1);
+  if (P.muted) return;
+  const ac = audio(), t = ac.currentTime;
+  const f = freqOf(ev.p);
+  const kTot = sounding.length || 1;
+  const vel = (0.14 + 0.2 * (1 - ev.rank / kTot)) / Math.sqrt(Math.max(1, kTot / 8));
+  const o1 = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain();
+  o1.type = 'triangle'; o1.frequency.value = f;
+  o2.type = 'sine'; o2.frequency.value = f * 2.003;
+  const g2 = ac.createGain(); g2.gain.value = 0.25;
+  g.gain.setValueAtTime(vel, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  o1.connect(g); o2.connect(g2).connect(g);
+  g.connect(ac.destination);
+  o1.start(t); o2.start(t);
+  o1.stop(t + 0.55); o2.stop(t + 0.55);
+}
+function barBlip() {
+  if (P.muted) return;
+  const ac = audio(), t = ac.currentTime;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine'; o.frequency.value = 2500;
+  g.gain.setValueAtTime(0.035, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + 0.04);
+}
+
+/* ---------------- Transport ---------------- */
+function advance(dt) {
+  if (!P.running) return;
+  const period = P.n * (60 / P.bpm / 4);
+  prevPhase = playPhase;
+  playPhase = wrap(playPhase + dt / period, 1);
+  const swept = wrap(playPhase - prevPhase, 1);
+  if (wrap(-prevPhase, 1) > 0 && wrap(-prevPhase, 1) <= swept) {
+    barIndex++; barPulse = 1; barBlip();
+    if (dirty) latch();
+  }
+  for (const ev of sounding) {
+    if (wrap(ev.t / P.n - prevPhase, 1) < swept) trigger(ev);
+  }
+}
+
+/* ---------------- Canvas ---------------- */
+const cv = document.getElementById('grid');
+const ctx = cv.getContext('2d');
+let W = 640, H = 420, DPR = 1;
+const PAD = 30;
+function resize() {
+  const el = document.getElementById('stage-wrap');
+  W = Math.max(320, Math.min(el.clientWidth - 24, 780));
+  H = Math.max(280, Math.min(el.clientHeight - 24, 460));
+  DPR = window.devicePixelRatio || 1;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+}
+window.addEventListener('resize', resize);
+function cellXY(t, p) {
+  const cw = (W - 2 * PAD) / P.n, chh = (H - 2 * PAD) / P.m;
+  return { x: PAD + (t + 0.5) * cw, y: H - PAD - (p + 0.5) * chh, cw, ch: chh };
+}
+
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const cw = (W - 2 * PAD) / P.n, chh = (H - 2 * PAD) / P.m;
+
+  // frame with wrap indication
+  ctx.strokeStyle = barPulse > 0 ? `rgba(88,199,212,${0.3 + barPulse * 0.5})` : '#2a323b';
+  ctx.lineWidth = 1.5 + barPulse * 0.5;
+  ctx.strokeRect(PAD, PAD, W - 2 * PAD, H - 2 * PAD);
+  ctx.setLineDash([2, 4]);
+  ctx.strokeStyle = '#3a444f'; ctx.lineWidth = 1;
+  ctx.strokeRect(PAD - 5, PAD - 5, W - 2 * PAD + 10, H - 2 * PAD + 10);
+  ctx.setLineDash([]);
+
+  // grid
+  for (let t = 1; t < P.n; t++) {
+    const x = PAD + t * cw;
+    ctx.strokeStyle = t % 4 === 0 ? '#2e3740' : '#20272e';
+    ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, H - PAD); ctx.stroke();
+  }
+  const sc = SCALES[P.scale];
+  for (let p = 1; p < P.m; p++) {
+    const y = H - PAD - p * chh;
+    ctx.strokeStyle = p % sc.length === 0 ? '#2e3740' : '#20272e';
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+  }
+  // octave labels
+  ctx.fillStyle = '#6b7784';
+  ctx.font = `9px 'IBM Plex Mono', monospace`;
+  ctx.textAlign = 'right';
+  for (let p = 0; p < P.m; p += sc.length) {
+    const { y } = cellXY(0, p);
+    ctx.fillText('8ve', PAD - 6, y + 3);
+  }
+
+  // pending layout (dimmed) if dirty while running
+  if (dirty && P.running) {
+    const pend = [];
+    const save = layout.slice();
+    computeLayout();
+    for (const ev of layout) pend.push(rotated(ev));
+    layout = save;
+    ctx.fillStyle = 'rgba(201,210,218,0.22)';
+    for (const ev of pend) {
+      const { x, y } = cellXY(ev.t, ev.p);
+      ctx.beginPath(); ctx.arc(x, y, Math.min(cw, chh) * 0.22, 0, 7); ctx.fill();
+    }
+  }
+
+  // sounding events
+  for (const ev of sounding) {
+    const { x, y } = cellXY(ev.t, ev.p);
+    const f = flash.get(ev.t + ',' + ev.p) || 0;
+    const kTot = sounding.length || 1;
+    const r = Math.min(cw, chh) * (0.22 + 0.1 * (1 - ev.rank / kTot)) + f * 5;
+    if (f > 0) {
+      ctx.fillStyle = `rgba(240,168,64,${f * 0.3})`;
+      ctx.beginPath(); ctx.arc(x, y, r + 8, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = '#f0a840';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    if (ev.pinned) {
+      ctx.strokeStyle = '#58c7d4'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(x, y, r + 3.5, 0, 7); ctx.stroke();
+    }
+  }
+
+  // playhead
+  if (P.running) {
+    const x = PAD + playPhase * (W - 2 * PAD);
+    ctx.strokeStyle = 'rgba(88,199,212,0.9)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, PAD - 5); ctx.lineTo(x, H - PAD + 5); ctx.stroke();
+  }
+
+  ctx.fillStyle = '#6b7784';
+  ctx.font = `10px 'IBM Plex Mono', monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillText(`time → (wraps)`, PAD, H - PAD + 16);
+  ctx.save();
+  ctx.translate(12, H - PAD);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('pitch → (wraps at 8ve)', 0, 0);
+  ctx.restore();
+  ctx.textAlign = 'right';
+  ctx.fillText(`bar ${barIndex}${dirty ? ' · pending' : ''}`, W - PAD, H - PAD + 16);
+}
+
+/* ---------------- Main loop ---------------- */
+const readout = document.getElementById('readout');
+let frame = 0;
+function loop(t) {
+  if (lastT === null) lastT = t;
+  const dt = Math.min(0.05, (t - lastT) / 1000);
+  lastT = t;
+  advance(dt);
+  for (const [id, f] of flash) { const nf = f - dt * 5; nf <= 0 ? flash.delete(id) : flash.set(id, nf); }
+  barPulse = Math.max(0, barPulse - dt * 4);
+  draw();
+  if (frame % 6 === 0) {
+    // min pairwise toroidal distance (unweighted) = blue-noise radius
+    let mind = Infinity;
+    for (let i = 0; i < sounding.length; i++)
+      for (let j = i + 1; j < sounding.length; j++) {
+        const dtd = cdistN(sounding[i].t, sounding[j].t, P.n) / P.n;
+        const dpd = cdistN(sounding[i].p, sounding[j].p, P.m) / P.m;
+        mind = Math.min(mind, Math.sqrt(dtd * dtd + dpd * dpd));
+      }
+    const cols = new Set(sounding.map(e => e.t));
+    readout.innerHTML =
+      `events <b>${sounding.length}</b> (${pinned.length} pinned) · onset columns <b>${cols.size}</b><br>` +
+      `blue-noise radius <b>${mind === Infinity ? '—' : mind.toFixed(3)}</b>`;
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- Interaction: pin / drag / unpin ---------------- */
+function cellAt(e) {
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const cw = (W - 2 * PAD) / P.n, chh = (H - 2 * PAD) / P.m;
+  const t = Math.floor((x - PAD) / cw), p = Math.floor((H - PAD - y) / chh);
+  if (t < 0 || t >= P.n || p < 0 || p >= P.m) return null;
+  return { t, p };
+}
+function markDirty() { dirty = true; if (!P.running) latch(); }
+let dragPin = null, downCell = null, moved = false;
+cv.addEventListener('pointerdown', e => {
+  audio();
+  const c = cellAt(e);
+  if (!c) return;
+  downCell = c; moved = false;
+  // hit a sounding event? map back to pre-rotation coords
+  const preT = wrap(c.t - P.rotT, P.n), preP = wrap(c.p - P.rotP, P.m);
+  const pi = pinned.findIndex(x => x.t === preT && x.p === preP);
+  if (pi >= 0) { dragPin = pi; cv.setPointerCapture(e.pointerId); return; }
+  const ev = layout.find(x => x.t === preT && x.p === preP);
+  if (ev) {
+    // grabbing a generated event pins it where it is, then drags
+    pinned.push({ t: preT, p: preP });
+    dragPin = pinned.length - 1;
+    cv.setPointerCapture(e.pointerId);
+    markDirty();
+  }
+});
+cv.addEventListener('pointermove', e => {
+  if (dragPin === null) return;
+  const c = cellAt(e);
+  if (!c) return;
+  const preT = wrap(c.t - P.rotT, P.n), preP = wrap(c.p - P.rotP, P.m);
+  const cur = pinned[dragPin];
+  if (cur.t !== preT || cur.p !== preP) {
+    if (!pinned.some((x, i) => i !== dragPin && x.t === preT && x.p === preP)) {
+      cur.t = preT; cur.p = preP; moved = true; markDirty();
+    }
+  }
+});
+cv.addEventListener('pointerup', e => {
+  if (dragPin === null && downCell) {
+    // click on empty cell = add pinned note (k grows to fit)
+    const preT = wrap(downCell.t - P.rotT, P.n), preP = wrap(downCell.p - P.rotP, P.m);
+    const occupied = layout.some(x => x.t === preT && x.p === preP);
+    if (!occupied) {
+      pinned.push({ t: preT, p: preP });
+      if (pinned.length > P.k) { P.k = pinned.length; syncK(); }
+      markDirty();
+    }
+  }
+  dragPin = null; downCell = null;
+});
+cv.addEventListener('dblclick', e => {
+  const c = cellAt(e);
+  if (!c) return;
+  const preT = wrap(c.t - P.rotT, P.n), preP = wrap(c.p - P.rotP, P.m);
+  const pi = pinned.findIndex(x => x.t === preT && x.p === preP);
+  if (pi >= 0) { pinned.splice(pi, 1); markDirty(); }
+});
+
+/* ---------------- Controls ---------------- */
+const $ = id => document.getElementById(id);
+function syncK() { $('s-k').value = P.k; $('v-k').textContent = P.k; }
+$('play').addEventListener('click', () => {
+  audio(); P.running = !P.running;
+  $('play').textContent = P.running ? '■ STOP' : '▶ RUN';
+  $('play').classList.toggle('active', P.running);
+});
+$('unpin').addEventListener('click', () => { pinned = []; markDirty(); });
+$('mute').addEventListener('click', () => { P.muted = !P.muted; $('mute').textContent = P.muted ? '🔇' : '🔊'; });
+document.querySelectorAll('#scale-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#scale-seg button').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    P.scale = b.dataset.s;
+  });
+});
+function bindSlider(id, valId, fmt, apply) {
+  $(id).addEventListener('input', e => {
+    const v = +e.target.value;
+    apply(v);
+    $(valId).textContent = fmt(v);
+  });
+}
+bindSlider('s-k', 'v-k', v => v, v => { P.k = Math.max(v, pinned.length); syncK(); markDirty(); });
+bindSlider('s-a', 'v-a', v => (v / 100).toFixed(2), v => { P.aniso = v / 100; markDirty(); });
+bindSlider('s-rt', 'v-rt', v => v, v => { P.rotT = v; markDirty(); });
+bindSlider('s-rp', 'v-rp', v => v, v => { P.rotP = v; markDirty(); });
+bindSlider('s-n', 'v-n', v => v, v => {
+  P.n = v; $('s-rt').max = v - 1;
+  pinned = pinned.filter(c => c.t < v);
+  markDirty();
+});
+bindSlider('s-m', 'v-m', v => v, v => {
+  P.m = v; $('s-rp').max = v - 1;
+  pinned = pinned.filter(c => c.p < v);
+  markDirty();
+});
+bindSlider('s-bpm', 'v-bpm', v => v, v => P.bpm = v);
+
+resize();
+latch();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

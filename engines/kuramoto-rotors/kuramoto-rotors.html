@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KURAMOTO ROTORS — phasing ⇄ locking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14181d; --panel: #1b2129; --line: #2a323b;
+    --text: #c9d2da; --dim: #6b7784;
+    --amber: #f0a840; --amber-dim: #8a6425; --cyan: #58c7d4;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --disp: 'Space Grotesk', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--disp); min-height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; align-items: baseline; gap: 14px; padding: 14px 20px 10px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; letter-spacing: 0.18em; font-weight: 700; }
+  header h1 .e2 { color: var(--amber); }
+  header .sub { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  main { flex: 1; display: flex; flex-wrap: wrap; }
+  #stage-wrap { flex: 1 1 420px; display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 380px; }
+  canvas#ring { touch-action: none; max-width: 100%; }
+  aside { flex: 0 1 340px; border-left: 1px solid var(--line); background: var(--panel); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 300px; }
+  @media (max-width: 790px) { aside { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--line); } }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .grow { flex: 1; }
+  label.slider { display: block; }
+  label.slider .lab { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--dim); margin-bottom: 4px; letter-spacing: 0.06em; }
+  label.slider .lab b { color: var(--text); font-weight: 500; }
+  input[type=range] { width: 100%; appearance: none; -webkit-appearance: none; height: 22px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--text); margin-top: -6px; border: 2px solid var(--bg); }
+  input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--cyan); }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--line); }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text); border: 2px solid var(--bg); }
+  button {
+    font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
+    border: 1px solid var(--line); padding: 7px 9px; cursor: pointer; letter-spacing: 0.05em;
+    transition: border-color .12s, color .12s;
+  }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  button.primary { border-color: var(--amber-dim); color: var(--amber); }
+  button.active { background: var(--amber); color: #14181d; border-color: var(--amber); }
+  .sect-title { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.22em; text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+  #rotor-list { display: flex; flex-direction: column; gap: 6px; }
+  .rotor-row { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; }
+  .rotor-row .chip { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .rotor-row .kv { width: 62px; }
+  .rotor-row .det { color: var(--dim); margin-left: auto; }
+  .rotor-row button { padding: 3px 8px; font-size: 11px; }
+  #coh-meter { height: 4px; background: var(--line); position: relative; overflow: hidden; }
+  #coh-fill { position: absolute; inset: 0; transform-origin: left; background: linear-gradient(90deg, var(--amber), var(--cyan)); }
+  #readout { font-family: var(--mono); font-size: 11px; color: var(--dim); line-height: 1.7; }
+  #readout b { color: var(--text); font-weight: 500; }
+  .hint { font-family: var(--mono); font-size: 10px; color: var(--dim); line-height: 1.6; }
+  .hint em { color: var(--cyan); font-style: normal; }
+  .hint strong { color: var(--amber); font-weight: 500; }
+</style>
+</head>
+<body>
+<header>
+  <h1>KURAMOTO <span class="e2">ROTORS</span></h1>
+  <span class="sub">detuned Euclidean rotors · dφᵢ/dt = ωᵢ + K·Σ sin(φⱼ−φᵢ)</span>
+</header>
+<main>
+  <div id="stage-wrap"><canvas id="ring"></canvas></div>
+  <aside>
+    <div class="row">
+      <button id="play" class="primary grow">▶ RUN</button>
+      <button id="scatter">✦ SCATTER</button>
+      <button id="mute">🔊</button>
+    </div>
+
+    <div class="sect-title">Field</div>
+    <label class="slider">
+      <span class="lab"><span>coupling K (phasing ⇄ locking)</span><b id="v-k">0.00</b></span>
+      <input type="range" id="s-k" min="0" max="100" value="0">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>detune spread</span><b id="v-sp">1.5%</b></span>
+      <input type="range" id="s-sp" min="0" max="80" value="15">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>base tempo (reference rotor)</span><b id="v-bpm">120</b></span>
+      <input type="range" id="s-bpm" min="40" max="200" value="120">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>grid n (pattern resolution)</span><b id="v-n">16</b></span>
+      <input type="range" id="s-n" min="4" max="32" value="16">
+    </label>
+
+    <div class="sect-title">Rotors — E(k,n) each</div>
+    <div id="rotor-list"></div>
+    <div class="row">
+      <button id="r-add" class="grow">+ rotor</button>
+      <button id="r-rem" class="grow">− rotor</button>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:4px">
+        <span>COHERENCE r</span><span id="v-coh">—</span>
+      </div>
+      <div id="coh-meter"><div id="coh-fill"></div></div>
+    </div>
+
+    <div id="readout"></div>
+    <div class="hint">
+      Each rotor carries its own Euclidean pattern and spins at its own rate;
+      onsets fire crossing the <strong>strike line</strong> (12 o'clock).
+      K = 0: pure Reich-style <em>phasing</em> — patterns drift through every
+      alignment. Raise K past the detune spread and the rotors <strong>lock</strong>:
+      still detuned, but coupling holds them in formation (watch the drift stop
+      and r pin near 1). The transition region is the instrument — near-lock
+      produces slow breathing alignments. <strong>✦ SCATTER</strong> randomizes
+      phases; watch/hear them find each other again. Unlike the other engines,
+      motion here is continuous <em>because rotation is the transport</em> —
+      every drift is directly audible.
+    </div>
+  </aside>
+</main>
+
+<script>
+'use strict';
+
+/* ---------------- Bjorklund ---------------- */
+function bjorklund(k, n) {
+  if (k <= 0) return Array(n).fill(0);
+  if (k >= n) return Array(n).fill(1);
+  let A = Array.from({length: k}, () => [1]);
+  let B = Array.from({length: n - k}, () => [0]);
+  while (B.length > 1) {
+    const m = Math.min(A.length, B.length);
+    const A2 = [], B2 = [];
+    for (let i = 0; i < m; i++) A2.push(A[i].concat(B[i]));
+    if (A.length > B.length) for (let i = m; i < A.length; i++) B2.push(A[i]);
+    else for (let i = m; i < B.length; i++) B2.push(B[i]);
+    A = A2; B = B2;
+  }
+  return A.concat(B).flat();
+}
+function onsetsOf(k, n) {
+  const pat = bjorklund(Math.min(k, n), n), o = [];
+  for (let i = 0; i < n; i++) if (pat[i]) o.push(i / n);
+  return o;
+}
+
+/* ---------------- State ---------------- */
+const COLORS = ['#f0a840', '#b48be8', '#6fd08c', '#e07a7a', '#58c7d4', '#d4c358'];
+const P = {
+  n: 16, bpm: 120,
+  K: 0.0,          // coupling, revolutions/sec scale
+  spread: 0.015,   // ± fractional detune
+  running: false, muted: false,
+};
+let rotors = [];   // {Phi (unwrapped revs), counts: Map(onsetIdx->int), k, onsets, color, baseFreq}
+function makeRotor(k, ci) {
+  return { Phi: Math.random() * 0.02, k, onsets: onsetsOf(k, P.n),
+           counts: null, color: COLORS[ci % COLORS.length],
+           baseFreq: 150 * Math.pow(2, (ci * 4) / 12) };
+}
+rotors = [makeRotor(3, 0), makeRotor(4, 1), makeRotor(5, 2)];
+function detuneOf(i) {
+  const N = rotors.length;
+  if (N === 1) return 0;
+  return P.spread * (2 * i / (N - 1) - 1);
+}
+let lastT = null, coherence = 0;
+let flash = new Map();    // "rotor:onsetIdx" -> age
+let strikeFlash = 0;
+
+function wrap(x) { return ((x % 1) + 1) % 1; }
+
+/* ---------------- Dynamics ----------------
+   phi in revolutions. dphi_i/dt = w_i + (K/N) sum_j sin(2pi(phi_j - phi_i)) / (2pi)
+   Continuous integration is CORRECT here: rotation is the transport. */
+function step(dt) {
+  const baseRate = P.bpm / 60 / 4;      // revolutions per second (bar = 4 beats)
+  const N = rotors.length;
+  const dPhi = new Array(N);
+  for (let i = 0; i < N; i++) {
+    let coup = 0;
+    for (let j = 0; j < N; j++) {
+      if (j === i) continue;
+      coup += Math.sin(2 * Math.PI * (rotors[j].Phi - rotors[i].Phi));
+    }
+    const w = baseRate * (1 + detuneOf(i));
+    let d = w + (N > 1 ? (P.K * baseRate / N) * coup / (2 * Math.PI) * 6 : 0);
+    dPhi[i] = Math.max(baseRate * 0.05, d);   // keep forward motion
+  }
+  for (let i = 0; i < N; i++) rotors[i].Phi += dPhi[i] * dt;
+  // order parameter
+  let re = 0, im = 0;
+  for (const r of rotors) { re += Math.cos(2 * Math.PI * r.Phi); im += Math.sin(2 * Math.PI * r.Phi); }
+  coherence = Math.hypot(re, im) / N;
+}
+
+/* ---------------- Triggering: onset crosses strike line (angle 0) ---------------- */
+function initCounts(r) {
+  r.counts = r.onsets.map(o => Math.floor(r.Phi + o));
+}
+rotors.forEach(initCounts);
+function scanTriggers() {
+  for (let ri = 0; ri < rotors.length; ri++) {
+    const r = rotors[ri];
+    for (let oi = 0; oi < r.onsets.length; oi++) {
+      const c = Math.floor(r.Phi + r.onsets[oi]);
+      if (c > r.counts[oi]) {
+        r.counts[oi] = c;
+        if (P.running) trigger(ri, oi);
+      } else if (c < r.counts[oi]) r.counts[oi] = c;
+    }
+  }
+}
+
+/* ---------------- Audio ---------------- */
+let AC = null;
+function audio() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function trigger(ri, oi) {
+  flash.set(ri + ':' + oi, 1);
+  strikeFlash = 1;
+  if (P.muted) return;
+  const ac = audio(), t = ac.currentTime;
+  const r = rotors[ri];
+  const base = r.baseFreq * Math.pow(2, (oi % 3) * 5 / 12);
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(base * 2, t);
+  o.frequency.exponentialRampToValueAtTime(base, t + 0.04);
+  g.gain.setValueAtTime(0.3 / Math.sqrt(rotors.length), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + 0.22);
+  const nb = ac.createBuffer(1, 600, ac.sampleRate);
+  const ch = nb.getChannelData(0);
+  for (let i = 0; i < 600; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / 600, 3);
+  const ns = ac.createBufferSource(), ng = ac.createGain();
+  ns.buffer = nb; ng.gain.value = 0.14 / Math.sqrt(rotors.length);
+  ns.connect(ng).connect(ac.destination);
+  ns.start(t);
+}
+
+/* ---------------- Canvas ---------------- */
+const cv = document.getElementById('ring');
+const ctx = cv.getContext('2d');
+let SZ = 480, DPR = 1;
+function resize() {
+  const el = document.getElementById('stage-wrap');
+  SZ = Math.max(300, Math.min(el.clientWidth - 24, el.clientHeight - 24, 560));
+  DPR = window.devicePixelRatio || 1;
+  cv.width = SZ * DPR; cv.height = SZ * DPR;
+  cv.style.width = SZ + 'px'; cv.style.height = SZ + 'px';
+}
+window.addEventListener('resize', resize);
+function angOf(th) { return th * 2 * Math.PI - Math.PI / 2; }
+
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, SZ, SZ);
+  const cx = SZ / 2, cy = SZ / 2;
+  const N = rotors.length;
+  const R0 = SZ * 0.17, R1 = SZ * 0.42;
+
+  // strike line at 12 o'clock
+  ctx.strokeStyle = strikeFlash > 0 ? `rgba(201,210,218,${0.4 + strikeFlash * 0.6})` : 'rgba(201,210,218,0.35)';
+  ctx.lineWidth = 1.5 + strikeFlash;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - R0 + 10);
+  ctx.lineTo(cx, cy - R1 - 14);
+  ctx.stroke();
+
+  for (let ri = 0; ri < N; ri++) {
+    const r = rotors[ri];
+    const RR = N === 1 ? (R0 + R1) / 2 : R0 + (R1 - R0) * ri / (N - 1);
+    // ring
+    ctx.strokeStyle = '#2a323b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, RR, 0, 7); ctx.stroke();
+    // phase marker (rotor's own zero)
+    const za = angOf(wrap(r.Phi));
+    ctx.strokeStyle = r.color; ctx.globalAlpha = 0.4; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(za) * (RR - 6), cy + Math.sin(za) * (RR - 6));
+    ctx.lineTo(cx + Math.cos(za) * (RR + 6), cy + Math.sin(za) * (RR + 6));
+    ctx.stroke(); ctx.globalAlpha = 1;
+    // onsets
+    for (let oi = 0; oi < r.onsets.length; oi++) {
+      const a = angOf(wrap(r.Phi + r.onsets[oi]));
+      const x = cx + Math.cos(a) * RR, y = cy + Math.sin(a) * RR;
+      const f = flash.get(ri + ':' + oi) || 0;
+      const rad = 4.5 + f * 5;
+      if (f > 0) {
+        ctx.fillStyle = r.color; ctx.globalAlpha = f * 0.3;
+        ctx.beginPath(); ctx.arc(x, y, rad + 7, 0, 7); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = r.color;
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, 7); ctx.fill();
+    }
+  }
+
+  // mean-field arrow: direction = mean phase, length ∝ coherence
+  let re = 0, im = 0;
+  for (const r of rotors) { re += Math.cos(2 * Math.PI * r.Phi); im += Math.sin(2 * Math.PI * r.Phi); }
+  const mAng = Math.atan2(im, re) - Math.PI / 2 + Math.PI / 2; // convert to our angle convention below
+  const meanTheta = wrap(Math.atan2(im, re) / (2 * Math.PI));
+  const a = angOf(meanTheta);
+  const L = coherence * (R0 - 14);
+  ctx.strokeStyle = '#58c7d4'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L);
+  ctx.stroke();
+  ctx.fillStyle = '#58c7d4';
+  ctx.beginPath(); ctx.arc(cx + Math.cos(a) * L, cy + Math.sin(a) * L, 3, 0, 7); ctx.fill();
+
+  ctx.fillStyle = '#6b7784';
+  ctx.font = `10px 'IBM Plex Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`r=${coherence.toFixed(2)}`, cx, cy + R0 * 0.55);
+}
+
+/* ---------------- Rotor list UI ---------------- */
+const listEl = document.getElementById('rotor-list');
+function renderRotorList() {
+  listEl.innerHTML = '';
+  rotors.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'rotor-row';
+    const det = detuneOf(i);
+    row.innerHTML = `
+      <span class="chip" style="background:${r.color}"></span>
+      <button data-i="${i}" data-d="-1">k−</button>
+      <span class="kv">E(${r.k},${P.n})</span>
+      <button data-i="${i}" data-d="1">k+</button>
+      <span class="det">×${(1 + det).toFixed(4)}</span>`;
+    listEl.appendChild(row);
+  });
+  listEl.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = +b.dataset.i, d = +b.dataset.d;
+      const r = rotors[i];
+      r.k = Math.max(1, Math.min(P.n, r.k + d));
+      r.onsets = onsetsOf(r.k, P.n);
+      initCounts(r);
+      renderRotorList();
+    });
+  });
+}
+
+/* ---------------- Main loop ---------------- */
+const readout = document.getElementById('readout');
+const cohFill = document.getElementById('coh-fill');
+const vCoh = document.getElementById('v-coh');
+let frame = 0;
+function loop(t) {
+  if (lastT === null) lastT = t;
+  const dt = Math.min(0.05, (t - lastT) / 1000);
+  lastT = t;
+  if (P.running) {
+    const sub = 4;
+    for (let i = 0; i < sub; i++) step(dt / sub);
+  }
+  scanTriggers();
+  for (const [id, f] of flash) { const nf = f - dt * 6; nf <= 0 ? flash.delete(id) : flash.set(id, nf); }
+  strikeFlash = Math.max(0, strikeFlash - dt * 8);
+  draw();
+  if (frame % 6 === 0) {
+    cohFill.style.transform = `scaleX(${coherence})`;
+    vCoh.textContent = coherence.toFixed(3) + (coherence > 0.995 ? ' · locked' : '');
+    const critK = P.spread > 0 ? (P.spread / 0.95).toFixed(3) : '0';
+    readout.innerHTML =
+      `rotors <b>${rotors.length}</b> · patterns <b>${rotors.map(r => `E(${r.k},${P.n})`).join(' ')}</b><br>` +
+      `spread <b>±${(P.spread * 100).toFixed(1)}%</b> · K <b>${P.K.toFixed(2)}</b>`;
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- Controls ---------------- */
+const $ = id => document.getElementById(id);
+$('play').addEventListener('click', () => {
+  audio(); P.running = !P.running;
+  $('play').textContent = P.running ? '■ STOP' : '▶ RUN';
+  $('play').classList.toggle('active', P.running);
+});
+$('scatter').addEventListener('click', () => {
+  audio();
+  for (const r of rotors) { r.Phi += Math.random(); initCounts(r); }
+});
+$('mute').addEventListener('click', () => { P.muted = !P.muted; $('mute').textContent = P.muted ? '🔇' : '🔊'; });
+$('r-add').addEventListener('click', () => {
+  if (rotors.length < 6) {
+    rotors.push(makeRotor([3, 4, 5, 7, 2, 6][rotors.length % 6], rotors.length));
+    initCounts(rotors[rotors.length - 1]);
+    renderRotorList();
+  }
+});
+$('r-rem').addEventListener('click', () => {
+  if (rotors.length > 1) { rotors.pop(); renderRotorList(); }
+});
+function bindSlider(id, valId, fmt, apply) {
+  $(id).addEventListener('input', e => {
+    const v = +e.target.value;
+    apply(v);
+    $(valId).textContent = fmt(v);
+  });
+}
+bindSlider('s-k', 'v-k', v => (v / 50).toFixed(2), v => P.K = v / 50);
+bindSlider('s-sp', 'v-sp', v => (v / 10).toFixed(1) + '%', v => { P.spread = v / 1000; renderRotorList(); });
+bindSlider('s-bpm', 'v-bpm', v => v, v => P.bpm = v);
+bindSlider('s-n', 'v-n', v => v, v => {
+  P.n = v;
+  for (const r of rotors) { r.k = Math.min(r.k, v); r.onsets = onsetsOf(r.k, v); initCounts(r); }
+  renderRotorList();
+});
+
+resize();
+renderRotorList();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 # CLAUDE.md — coupled-rings/ (engine territory — SPEC-GAPPED)
 
-Sub-charter. Read root `../CLAUDE.md` and contract
-`../sequencer-studio-architecture.md` first.
+Sub-charter. Read root `../../CLAUDE.md` and contract
+`../../sequencer-studio-architecture.md` first.
 
 ## ⚠ Status: prototype only — implementation BLOCKED
 Only `coupled-rings.html` exists. There is **no spec yet**, so this engine is

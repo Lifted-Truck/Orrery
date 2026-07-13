@@ -19,10 +19,14 @@ trace + project state fully reconstructs a performance.
   organ boundary; treat a change to it as a contract-version event.
 - **`shell/`** — the studio host (clock, offset layer, router, trace, plugin
   shell). Owns the contract's *implementation*.
-- **`elastic-euclid/`, `measured-euclid/`, `coupled-rings/`** — engine
-  territories. Each has its own spec (source of truth for its internals), a
+- **`engines/<name>/`** — engine territories (all sequencer engines live under
+  `engines/`). Each has its own spec (source of truth for its internals), a
   validated prototype (reference oracle), and its own acceptance tests. An
   engine may ONLY depend on the contract, never on another engine's internals.
+  Current: elastic-euclid, measured-euclid, probable-euclid, torus-euclid
+  (spec validated); kuramoto-rotors (needs the free-transport contract
+  variant); coupled-rings (spec gap). `engines/_template/` is the intake
+  template.
 - **`integrations/tonality/`** — the Tonality consumer boundary (scaleQuant +
   pitch via the Tonality JSON contract). One boundary module; pin the version;
   degrade visibly.
@@ -70,23 +74,27 @@ codesign-seal-after-build, `auval`, Release-not-Debug for perf, sandbox
 Follow it verbatim; do not re-derive it. Same repo conventions as AURICLE
 (CMake, single repo, `Source/` split `dsp/`/`model/`/`gui/`).
 
-## Adding an engine (intake — more are coming)
-New engines land as new top-level territory dirs (monorepo — DECISIONS #6).
-`./verify` goes RED on any unregistered territory-shaped dir, so nothing is
-silently half-added. To intake one:
-1. Drop the engine's prototype (`<name>.html`) and, when written, its spec
-   (`<name>-spec.md`) into `<name>/`.
-2. Copy `_engine-template/CLAUDE.md` → `<name>/CLAUDE.md`; fill the slots
-   from the spec/prototype.
+## Adding an engine (intake — engines live under engines/)
+New engines land as `engines/<name>/` (monorepo — DECISIONS #6). `./verify`
+goes RED on any `engines/<name>/` not registered, so nothing is half-added.
+To intake one:
+1. Drop the engine into `engines/<name>/` (prototype `<name>.html`, and its
+   spec `<name>-spec.md` when written).
+2. Copy `engines/_template/CLAUDE.md` → `engines/<name>/CLAUDE.md`; fill the
+   slots from the spec/prototype.
 3. Register it in `project.manifest.json` → `composite.territories`
-   (path, role, spec-or-null, prototype, status).
-4. Add its build phase to `ROADMAP.md` (spec-before-build: a prototype-only
-   engine is BLOCKED on writing its spec first — see Coupled Rings, O4a).
+   (path `engines/<name>`, role, spec-or-null, prototype, contract, status).
+4. Add it to `ROADMAP.md` (spec-before-build: a prototype-only engine is
+   BLOCKED on its spec first — see Coupled Rings O4a; a non-standard-contract
+   engine is blocked on the contract change — see Kuramoto).
 5. `./verify fast` green.
 
-An agent can do steps 2–5 from a landed dir (the template + spec make it a
-scoped task); or notify the maintainer to run them. Either way, verify's
-unregistered-dir check is the safety net.
+An agent can do steps 2–5 from a landed dir; or notify the maintainer.
+Verify's unregistered-engine check is the safety net either way.
+**Watch for contract findings during intake:** an engine that needs a
+transport variant (Kuramoto → free-transport) or introduces a new output kind
+(Torus → native pitch) is a contract-change proposal, not just a new
+territory — record it in DECISIONS and gate the build on the contract change.
 
 ## Human gates
 Deleting files, changing the contract (`sequencer-studio-architecture.md`),

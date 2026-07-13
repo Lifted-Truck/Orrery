@@ -32,10 +32,20 @@
   *Gate: its spec §6 acceptance tests green (Euclid recovery, inverse
   accuracy, latch invariant, monotone deformation, determinism); matches
   `measured-euclid.html`.*
-- **O4 — Coupled Rings engine** (organ). **BLOCKED: spec not yet written.**
-  Sub-gate O4a: write `coupled-rings/coupled-rings-spec.md` from the prototype
-  (ring-coupling model, sourceId = (ring,particle) packed) — human-reviewed.
-  Then O4b build. *Gate: spec acceptance tests green.*
+- **O4 — Additional engines** (organs, parallelizable once O2 proves the seam;
+  each in `engines/<name>/` with its own verify gate). Build order among these
+  is TBD after O2 — the user has landed a pool of validated engines; prioritize
+  at O2. Each gate = that engine's spec acceptance tests green + matches its
+  prototype (some carry explicit divergence anchors: torus L=0 reproduces the
+  prototype layout; kuramoto honest-retrograde replaces the prototype floor).
+  - **probable-euclid** — standard IEngine; ready.
+  - **torus-euclid** — standard IEngine; ready, BUT its pitch output waits on
+    the pitch/note-map contract note (DECISIONS #9). Rhythm layout unblocked.
+  - **kuramoto-rotors** — **BLOCKED on a contract change**: needs
+    `IFreeTransportEngine` added to the contract §5 first (DECISIONS #8).
+  - **coupled-rings** — **BLOCKED on spec**: O4a writes
+    `engines/coupled-rings/coupled-rings-spec.md` from the prototype
+    (human-reviewed) before build.
 - **O5 — Generator set completion.** `contour`, `arp`, `scaleQuant`
   (scaleQuant requires the Tonality boundary — O-int below). *Gate: each
   generator seeded, latched per bar, deterministic order, trace-recorded;
