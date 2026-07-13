@@ -1,6 +1,6 @@
 {
   "schema": "project-manifest.0 (draft — kit v2 will formalize); COMPOSITE variant",
-  "status": "RATIFIED 2026-07-13 (O0 gate — human): manifest, rung-2→3 path, and contract frozen-for-Phase-1. O1 studio-shell CORE done (shell/core, framework-free, 6/6 ctests green via ./verify fast); O1b (JUCE VST3/AU wrapper + auval) next.",
+  "status": "RATIFIED 2026-07-13 (O0). O1 core done (shell/core, framework-free). O1b done: JUCE 8.0.14 VST3/AU/Standalone (shell/plugin) — AU VALIDATION SUCCEEDED, codesign seal VALID, RT no-alloc gate green, core-boundary gate green. 8/8 ctests via ./verify full. O2 (Elastic Euclid — rung-2→3 trigger) next.",
   "composite": {
     "kind": "umbrella — one plugin, contract-bound sub-territories",
     "contract": "sequencer-studio-architecture.md",

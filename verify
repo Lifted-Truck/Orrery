@@ -2,13 +2,17 @@
 # verify — oracle dispatcher for Orrery. Usage: ./verify fast|full|report
 # Contract: exit 0 = green, nonzero = red. Writes .harness/last-verify.json.
 #
-# STAGE O1 (core-build): `fast` runs the structural scaffold gate AND the
-# framework-free core build + ctest (shell/core — clock, offset layer, router,
-# trace, determinism). `full` == `fast` until the JUCE plugin wrapper lands at
-# O1b, when full() gains the audio-plugin validation dance (auval SUCCEEDED,
-# codesign --verify) per the global CLAUDE.md build gotchas. Absolute build
-# path (the CC sandbox resets cwd between calls). Do NOT claim a plugin-loadable
-# gate until O1b wires auval.
+# STAGE O1b (core + plugin):
+#   fast → structural scaffold gate + framework-free core build + ctest
+#          (shell/core: clock, offset layer, router, trace, determinism) +
+#          the core-boundary gate. Offline, quick, no JUCE.
+#   full → fast, THEN the JUCE plugin build (shell/plugin) + its ctest
+#          (RT no-alloc gate + core-boundary + core tests). Heavier: pulls JUCE
+#          via FetchContent (set ORRERY_JUCE_DIR to reuse a cached checkout).
+#          The codesign re-seal runs in-build (POST_BUILD); `auval` + install to
+#          ~/Library are machine-local / human-run per the global CLAUDE.md
+#          build gotchas — see tools/validate_au.sh. Absolute build paths (the
+#          CC sandbox resets cwd between calls).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 TARGET="${1:-fast}"; HARNESS_DIR=".harness"; mkdir -p "$HARNESS_DIR"
@@ -79,7 +83,25 @@ PY
   return 0
 }
 
-full() { fast; }  # identical until the JUCE plugin wrapper + auval land (O1b)
+# O1b plugin build gate: JUCE VST3/AU/Standalone + RT no-alloc + all ctests.
+full() {
+  fast || return 1
+  command -v cmake >/dev/null 2>&1 || { echo "verify: cmake not found" >&2; return 1; }
+  local PBUILD="$ROOT/build-plugin"
+  local extra=()
+  [ -n "${ORRERY_JUCE_DIR:-}" ] && extra+=("-DFETCHCONTENT_SOURCE_DIR_JUCE=$ORRERY_JUCE_DIR")
+  if [ ! -f "$PBUILD/CMakeCache.txt" ]; then
+    cmake -S "$ROOT" -B "$PBUILD" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug \
+      -DORRERY_BUILD_PLUGIN=ON "${extra[@]}" \
+      || { echo "verify: plugin configure failed (JUCE fetch?)" >&2; return 1; }
+  fi
+  cmake --build "$PBUILD" -j"$(sysctl -n hw.ncpu 2>/dev/null || echo 4)" \
+    || { echo "verify: plugin build failed" >&2; return 1; }
+  ( cd "$PBUILD" && ctest --output-on-failure ) || return 1
+  echo "verify[full]: plugin build + RT/boundary/core ctests green (O1b)."
+  echo "  note: auval + install to ~/Library are human-run (tools/validate_au.sh)."
+  return 0
+}
 
 case "$TARGET" in
   fast)   fast;  record fast  $? ;;

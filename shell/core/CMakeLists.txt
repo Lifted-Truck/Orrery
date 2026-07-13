@@ -28,5 +28,7 @@ foreach(t ${ORRERY_CORE_TESTS})
     target_link_libraries(${t} PRIVATE orrery_core)
     target_include_directories(${t} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
     target_compile_options(${t} PRIVATE -Wall -Wextra)
-    add_test(NAME ${t} COMMAND ${t})
+    # $<TARGET_FILE> (not the bare target name) so ctest finds the binary even
+    # when JUCE relocates the runtime output dir in the plugin build.
+    add_test(NAME ${t} COMMAND $<TARGET_FILE:${t}>)
 endforeach()

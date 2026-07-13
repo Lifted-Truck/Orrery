@@ -89,3 +89,26 @@ history; supersede with a new numbered entry.
     without a plugin host, and the framework-free-core doctrine keeps UI/IO/time
     in thin adapters. Time/IO/threading (AudioPlayHead read, MIDI bytes, ring-
     buffer drain) stay out of the core, behind adapter seams O1b fills in.
+
+11. **O1b plugin shape: JUCE 8.0.14, generic editor, renderBlock seam,
+    tick-per-lap scheduling** (2026-07-13). The `shell/plugin/` wrapper pins
+    JUCE 8.0.14 (same commit AURICLE pins — a sibling's cache reuses offline via
+    `ORRERY_JUCE_DIR`). Three deliberate O1b scopings: (a) **generic editor**
+    (`GenericAudioProcessorEditor` over APVTS params) — a custom GUI is a later
+    phase; APVTS also gives automatable params + host state for free. (b) The
+    RT-critical work lives in **`renderBlock(buffer, midi, ts)`**, transport-
+    injected, so a headless console app drives the exact audio path under an
+    allocation hook — the enforceable no-alloc gate, not a claim. (c) The plugin
+    **latches once per scheduling lap** (lap = the core clock's latch interval;
+    engine `barPhase` tiles one interval, consecutive latches abut) to avoid
+    lap/division double-scheduling with the whole-lap-emitting stub; finer per-
+    engine divisions wire in when a real engine needs them. Rejected: a custom
+    GUI now (premature — no engine to visualize); testing RT-safety by
+    inspection only (the core's by-construction claim needs an instrumented
+    audio callback to be a gate). Contract UNCHANGED — all of this is adapter
+    work in `shell/plugin/`; the frozen `IEngine` seam held against a real host.
+    Two bugs the gates caught: JUCE's post-sign `moduleinfo.json` regeneration
+    breaks the seal (fixed by a `POST_BUILD` `codesign --force -s -`, else the
+    DAW silently skips the plugin), and a `juce::Thread` destroyed without a
+    prior `releaseResources()` asserts (fixed by stopping the drain in the
+    destructor too — surfaced by `auval`).

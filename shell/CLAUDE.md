@@ -55,10 +55,34 @@ verifiable without a plugin host. The JUCE VST3/AU wrapper + `auval` land at O1b
   clock ±1-sample timing sweep, offset lock/generator coexistence, trace
   round-trip, stub sourceId stability, whole-pipeline bit-identity + save/load.
 
-**RT-safety is by construction here** (fixed arrays, no heap on the tick path).
-The *enforceable* no-alloc gate (allocation hook / ASAN on the real audio
-callback) is an O1b/O2 item — there is no `processBlock` to instrument yet.
-Don't claim that gate green until it runs.
+**RT-safety in the core is by construction** (fixed arrays, no heap on the tick
+path). The *enforceable* no-alloc gate now exists in the plugin build (below).
+
+## Plugin map (O1b — `shell/plugin/`, JUCE lives here and ONLY here)
+JUCE 8.0.14 (FetchContent-pinned). `tools/check_core_boundary.py` fails the
+build if any `juce`/`JUCE_*` token appears under `shell/core/`.
+- `PluginProcessor.{h,cpp}` — wraps `orrery_core`. AudioPlayHead→`TransportState`
+  adapter; APVTS params (gain/sources/rate/gate/quantize/walk/accent) → core
+  config; **`renderBlock(buffer, midi, ts)`** is the RT-critical seam, transport-
+  injected so the headless RT test drives it. Chain: clock latches → engine
+  `tick` → offset generators → mini-scheduler (lap-phase → sample-accurate note
+  on/off) → MIDI out + voices. Generic editor (a real GUI is a later phase).
+- `Lockfree.h` — SPSC ring (atomics, power-of-two, POD) for GUI→audio gestures
+  and audio→drain trace. No alloc/lock on the audio thread.
+- `Voices.h` — fixed-capacity fallback drum voices (per-voice seeded noise).
+- `TraceDrain.{h,cpp}` — background `juce::Thread` popping POD trace records and
+  formatting JSONL off the audio thread. **Stop it in BOTH `releaseResources()`
+  and the destructor** — a host may destroy the processor without releasing, and
+  a running `juce::Thread` must be stopped before deletion (auval caught this).
+- `tests/test_rt_noalloc.cpp` — the **RT gate**: thread-local allocation hook
+  asserts 0 heap allocs across steady-state `renderBlock`s (warm-up excluded).
+
+Build/validate (machine-local, human-run — global CLAUDE.md gotchas): the
+codesign re-seal is a CMake `POST_BUILD` (JUCE regenerates `moduleinfo.json`
+after signing → broken seal → DAW silently skips it). `auval`/install to
+`~/Library` run via `tools/validate_au.sh` in a real terminal. `./verify full`
+builds the plugin + runs all ctests; set `ORRERY_JUCE_DIR` to reuse a cached
+JUCE checkout offline.
 
 ## Do not
 Reach into an engine's internals (only the `IEngine` interface); emit MIDI

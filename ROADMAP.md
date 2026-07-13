@@ -21,13 +21,19 @@
   (`./verify fast`): offset lock/generator coexistence unit-tested, trace
   round-trips, whole-pipeline determinism bit-identical, clock ±1-sample across
   a rate/tempo/division sweep, stub sourceId stability (§1.2). 6/6 ctests green.*
-  **← here**
-- **O1b — Plugin wrapper + RT gate.** Wrap `orrery_core` in a JUCE VST3/AU
-  instrument (AudioPlayHead→TransportState adapter, SPSC gesture queue, ring-
-  buffer trace drain, MIDI byte emission + input matrix, fallback drum voices).
-  *Gate: builds as a loadable VST3/AU (codesign seal verified, `auval`
-  SUCCEEDED — machine-local, human-run per the global build gotchas); no-alloc
-  in `processBlock` verified (allocation hook / ASAN).*
+- **O1b — Plugin wrapper + RT gate.** ✅ **DONE 2026-07-13.** `shell/plugin/`
+  wraps `orrery_core` in a JUCE 8.0.14 VST3/AU/Standalone instrument:
+  AudioPlayHead→TransportState adapter, `renderBlock` seam, mini-scheduler
+  (lap-phase → sample-accurate note on/off), SPSC gesture queue, POD trace ring
+  + off-thread JSONL drain, MIDI in→perturbation / out, APVTS params (generic
+  editor), fallback drum voices, small-chunk state. *Gate met: VST3 + AU +
+  Standalone build with codesign seal re-sealed after JUCE's moduleinfo
+  regeneration (`codesign --verify --deep` VALID); **`auval -v aumu Orry Lftk`
+  → AU VALIDATION SUCCEEDED**; RT no-alloc gate green (0 heap allocs across
+  4000 `renderBlock`s under a thread-local allocation hook, `test_rt_noalloc`);
+  core-boundary gate green (no JUCE in `shell/core`). `./verify full` runs the
+  whole plugin build + ctests; `auval`/install are human-run via
+  `tools/validate_au.sh`.* **← here; O2 is next.**
 - **O2 — Elastic Euclid engine.** Implement the validated spec against the
   `IEngine` contract. *Gate: the spec's acceptance tests all green — §8.1
   equilibrium (E(k,n) recovery), §8.2 determinism bit-identity, §8.3 ±1-sample
