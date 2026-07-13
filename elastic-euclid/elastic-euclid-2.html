@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELASTIC EUCLID II — clocked relaxation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14181d;
+    --panel: #1b2129;
+    --line: #2a323b;
+    --text: #c9d2da;
+    --dim: #6b7784;
+    --amber: #f0a840;
+    --amber-dim: #8a6425;
+    --cyan: #58c7d4;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --disp: 'Space Grotesk', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--disp); min-height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; align-items: baseline; gap: 14px; padding: 14px 20px 10px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; letter-spacing: 0.18em; font-weight: 700; }
+  header h1 .e2 { color: var(--amber); }
+  header .sub { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  main { flex: 1; display: flex; flex-wrap: wrap; }
+  #stage-wrap { flex: 1 1 420px; display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 380px; }
+  canvas#ring { touch-action: none; cursor: grab; max-width: 100%; }
+  aside { flex: 0 1 340px; border-left: 1px solid var(--line); background: var(--panel); padding: 18px; display: flex; flex-direction: column; gap: 15px; min-width: 300px; }
+  @media (max-width: 780px) { aside { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--line); } }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .grow { flex: 1; }
+  label.slider { display: block; }
+  label.slider .lab { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--dim); margin-bottom: 4px; letter-spacing: 0.06em; }
+  label.slider .lab b { color: var(--text); font-weight: 500; }
+  input[type=range] { width: 100%; appearance: none; -webkit-appearance: none; height: 22px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--text); margin-top: -6px; border: 2px solid var(--bg); }
+  input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--cyan); }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--line); }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text); border: 2px solid var(--bg); }
+  button {
+    font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
+    border: 1px solid var(--line); padding: 8px 10px; cursor: pointer; letter-spacing: 0.06em;
+    transition: border-color .12s, color .12s;
+  }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  button.primary { border-color: var(--amber-dim); color: var(--amber); }
+  button.active { background: var(--amber); color: #14181d; border-color: var(--amber); }
+  .seg { display: flex; }
+  .seg button { flex: 1; border-right-width: 0; }
+  .seg button:last-child { border-right-width: 1px; }
+  .seg button.sel { background: var(--line); color: var(--amber); }
+  .sect-title { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.22em; text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+  #pattern { display: flex; gap: 3px; flex-wrap: wrap; }
+  #pattern .cell { width: 16px; height: 26px; border: 1px solid var(--line); position: relative; }
+  #pattern .cell.on { background: var(--amber); border-color: var(--amber); }
+  #pattern .cell.on.multi { background: repeating-linear-gradient(45deg, var(--amber), var(--amber) 3px, #c77f22 3px, #c77f22 6px); }
+  #pattern .cell.ghost::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 5px; height: 5px; transform: translateX(-50%) rotate(45deg); border: 1px solid var(--cyan); }
+  #readout { font-family: var(--mono); font-size: 11px; color: var(--dim); line-height: 1.7; }
+  #readout b { color: var(--text); font-weight: 500; }
+  #eq-meter { height: 4px; background: var(--line); position: relative; overflow: hidden; }
+  #eq-fill { position: absolute; inset: 0; transform-origin: left; background: linear-gradient(90deg, var(--cyan), var(--amber)); }
+  .hint { font-family: var(--mono); font-size: 10px; color: var(--dim); line-height: 1.6; }
+  .hint em { color: var(--cyan); font-style: normal; }
+  .hint strong { color: var(--amber); font-weight: 500; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ELASTIC <span class="e2">EUCLID</span> II</h1>
+  <span class="sub">pattern[t+1] = relax(pattern[t]) · physics clocked by the bar</span>
+</header>
+<main>
+  <div id="stage-wrap"><canvas id="ring"></canvas></div>
+  <aside>
+    <div class="row">
+      <button id="play" class="primary grow">▶ RUN</button>
+      <button id="tick-btn">⏭ TICK</button>
+      <button id="kick">⚡ KICK</button>
+      <button id="mute">🔊</button>
+    </div>
+
+    <div class="sect-title">Clock — when the system evolves</div>
+    <div class="seg" id="clock-seg">
+      <button data-mode="bar" class="sel">BAR</button>
+      <button data-mode="half">½ BAR</button>
+      <button data-mode="step">STEP</button>
+      <button data-mode="free">FREE</button>
+    </div>
+    <label class="slider">
+      <span class="lab"><span>relaxation per tick</span><b id="v-rlx">0.08</b></span>
+      <input type="range" id="s-rlx" min="1" max="60" value="8">
+    </label>
+
+    <div class="sect-title">Population</div>
+    <div class="row">
+      <button id="rem">− particle</button>
+      <span class="grow" style="text-align:center;font-family:var(--mono);font-size:13px" id="kn">k=5 · n=16</span>
+      <button id="add">+ particle</button>
+    </div>
+    <label class="slider">
+      <span class="lab"><span>lattice wells n</span><b id="v-n">16</b></span>
+      <input type="range" id="s-n" min="3" max="32" value="16">
+    </label>
+
+    <div class="sect-title">Physics</div>
+    <label class="slider">
+      <span class="lab"><span>repulsion (evenness)</span><b id="v-rep">1.00</b></span>
+      <input type="range" id="s-rep" min="0" max="200" value="100">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>lattice pull (grid)</span><b id="v-lat">0.60</b></span>
+      <input type="range" id="s-lat" min="0" max="200" value="60">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>damping (settle)</span><b id="v-dmp">0.35</b></span>
+      <input type="range" id="s-dmp" min="2" max="200" value="35">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>tempo</span><b id="v-bpm">120</b></span>
+      <input type="range" id="s-bpm" min="40" max="200" value="120">
+    </label>
+
+    <div class="sect-title">Latched pattern <span style="float:right">◇ = Bjorklund E(k,n)</span></div>
+    <div id="pattern"></div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:4px">
+        <span>Δ FROM EQUILIBRIUM</span><span id="v-eq">—</span>
+      </div>
+      <div id="eq-meter"><div id="eq-fill"></div></div>
+    </div>
+
+    <div id="readout"></div>
+    <div class="hint">
+      The pattern is <strong>frozen within each clock division</strong> — every bar performs
+      one coherent state, then the system advances one generation at the boundary.
+      <strong>Drag</strong> or <strong>⚡ KICK</strong> stores energy (whiskers) that
+      applies at the next tick; watch it settle over audible generations.
+      <em>⏭ TICK</em> steps the map by hand while stopped.
+      FREE restores v1's continuous (inaudible) motion for comparison.
+    </div>
+  </aside>
+</main>
+
+<script>
+'use strict';
+
+/* ---------------- Bjorklund ---------------- */
+function bjorklund(k, n) {
+  if (k <= 0) return Array(n).fill(0);
+  if (k >= n) return Array(n).fill(1);
+  let A = Array.from({length: k}, () => [1]);
+  let B = Array.from({length: n - k}, () => [0]);
+  while (B.length > 1) {
+    const m = Math.min(A.length, B.length);
+    const A2 = [], B2 = [];
+    for (let i = 0; i < m; i++) A2.push(A[i].concat(B[i]));
+    if (A.length > B.length) for (let i = m; i < A.length; i++) B2.push(A[i]);
+    else for (let i = m; i < B.length; i++) B2.push(B[i]);
+    A = A2; B = B2;
+  }
+  return A.concat(B).flat();
+}
+
+/* ---------------- State ---------------- */
+const P = {
+  n: 16, bpm: 120,
+  repulsion: 1.0, lattice: 0.6, damping: 0.35,
+  relax: 0.08,          // simulated seconds of relaxation applied per tick
+  clockMode: 'bar',     // 'bar' | 'half' | 'step' | 'free'
+  running: false, muted: false,
+};
+let particles = [];     // {th (latched), vis (display), om, id}
+let nextId = 0;
+let playPhase = 0, prevPhase = 0, lastT = null;
+let flash = new Map();
+let stepFlash = new Array(P.n).fill(0);
+let generation = 0;
+
+function wrap(x) { return ((x % 1) + 1) % 1; }
+function sdist(a, b) { return wrap(b - a + 0.5) - 0.5; }
+
+function addParticle(at) {
+  let th;
+  if (at !== undefined) th = wrap(at);
+  else if (particles.length === 0) th = 0;
+  else {
+    const s = [...particles].sort((a, b) => a.th - b.th);
+    let best = -1, bi = 0;
+    for (let i = 0; i < s.length; i++) {
+      const g = wrap(s[(i + 1) % s.length].th - s[i].th);
+      if (g > best) { best = g; bi = i; }
+    }
+    th = wrap(s[bi].th + best / 2 + (Math.random() - 0.5) * 0.02);
+  }
+  particles.push({ th, vis: th, om: 0, id: nextId++ });
+}
+function removeParticle() { if (particles.length > 1) particles.pop(); }
+for (let i = 0; i < 5; i++) addParticle(i / 5 + 0.03 * Math.random());
+
+/* ---------------- Physics core (one integrator substep) ---------------- */
+function integrate(dt) {
+  const k = particles.length;
+  const K = P.repulsion * 0.004;
+  const A = P.lattice * 3.0;
+  const c = P.damping * 8.0;
+  const eps = 0.0004;
+  const F = new Array(k).fill(0);
+  for (let i = 0; i < k; i++) {
+    for (let j = i + 1; j < k; j++) {
+      const d = sdist(particles[i].th, particles[j].th);
+      const f = K * Math.sign(d) / (d * d + eps);
+      F[i] -= f; F[j] += f;
+    }
+    F[i] += -A * Math.sin(2 * Math.PI * P.n * particles[i].th) / P.n;
+    F[i] += -c * particles[i].om;
+  }
+  for (let i = 0; i < k; i++) {
+    const p = particles[i];
+    if (p.drag) { p.om = 0; continue; }
+    p.om += F[i] * dt;
+    p.om = Math.max(-6, Math.min(6, p.om));
+    p.th = wrap(p.th + p.om * dt);
+  }
+}
+
+/* The iterated map: apply P.relax seconds of simulated dynamics, then latch */
+function tick(amount) {
+  const T = (amount !== undefined ? amount : P.relax);
+  const sub = 24;
+  for (let i = 0; i < sub; i++) integrate(T / sub);
+  generation++;
+}
+
+/* ---------------- Equilibrium ghosts ---------------- */
+function ghostPositions() {
+  const k = particles.length, n = P.n;
+  const pat = bjorklund(Math.min(k, n), n);
+  const onsets = [];
+  for (let i = 0; i < n; i++) if (pat[i]) onsets.push(i / n);
+  if (onsets.length === 0) return { ghosts: [], rms: 0, pat };
+  const sorted = [...particles].map(p => p.th).sort((a, b) => a - b);
+  let bestErr = Infinity, bestGhosts = onsets;
+  for (let r = 0; r < n; r++) {
+    const g = onsets.map(o => wrap(o + r / n)).sort((a, b) => a - b);
+    let bestLocal = Infinity;
+    const m = Math.min(g.length, sorted.length);
+    for (let off = 0; off < g.length; off++) {
+      let e = 0;
+      for (let i = 0; i < m; i++) {
+        const d = sdist(sorted[i], g[(i + off) % g.length]);
+        e += d * d;
+      }
+      if (e < bestLocal) bestLocal = e;
+    }
+    if (bestLocal < bestErr) { bestErr = bestLocal; bestGhosts = g; }
+  }
+  return { ghosts: bestGhosts, rms: Math.sqrt(bestErr / Math.max(1, Math.min(bestGhosts.length, sorted.length))), pat };
+}
+
+/* ---------------- Audio ---------------- */
+let AC = null;
+function audio() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function trigger(p) {
+  flash.set(p.id, 1);
+  const cell = Math.round(p.th * P.n) % P.n;
+  stepFlash[cell] = 1;
+  if (P.muted) return;
+  const ac = audio();
+  const t = ac.currentTime;
+  const base = 150 * Math.pow(2, (p.id % 5) * 3 / 12);
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(base * 2.2, t);
+  o.frequency.exponentialRampToValueAtTime(base, t + 0.05);
+  g.gain.setValueAtTime(0.4, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + 0.25);
+  const nb = ac.createBuffer(1, 800, ac.sampleRate);
+  const ch = nb.getChannelData(0);
+  for (let i = 0; i < 800; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / 800, 3);
+  const ns = ac.createBufferSource(), ng = ac.createGain();
+  ns.buffer = nb; ng.gain.value = 0.25;
+  ns.connect(ng).connect(ac.destination);
+  ns.start(t);
+}
+function tickBlip() {
+  if (P.muted) return;
+  const ac = audio(), t = ac.currentTime;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine'; o.frequency.value = 2400;
+  g.gain.setValueAtTime(0.05, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + 0.04);
+}
+
+/* ---------------- Playhead: triggers + clocked evolution ---------------- */
+function crossings(from, to, boundaries) {
+  // how many boundary phases in (from, to], accounting for wrap
+  let c = 0;
+  const swept = wrap(to - from);
+  for (const b of boundaries) if (wrap(b - from) > 0 && wrap(b - from) <= swept) c++;
+  return c;
+}
+function clockBoundaries() {
+  if (P.clockMode === 'bar') return [0];
+  if (P.clockMode === 'half') return [0, 0.5];
+  if (P.clockMode === 'step') return Array.from({length: P.n}, (_, i) => i / P.n);
+  return [];
+}
+let tickPulse = 0;
+function advancePlayhead(dt) {
+  if (!P.running) return;
+  const period = P.n * (60 / P.bpm / 4);
+  prevPhase = playPhase;
+  playPhase = wrap(playPhase + dt / period);
+  const swept = wrap(playPhase - prevPhase);
+
+  // 1) evolve at clock boundaries (before trigger check, using new state)
+  if (P.clockMode !== 'free') {
+    const nTicks = crossings(prevPhase, playPhase, clockBoundaries());
+    for (let i = 0; i < nTicks; i++) { tick(); tickPulse = 1; if (P.clockMode !== 'step') tickBlip(); }
+  }
+
+  // 2) triggers against latched positions
+  for (const p of particles) {
+    if (wrap(p.th - prevPhase) < swept) trigger(p);
+  }
+}
+
+/* ---------------- Canvas ---------------- */
+const cv = document.getElementById('ring');
+const ctx = cv.getContext('2d');
+let SZ = 480, DPR = 1;
+function resize() {
+  const wrapEl = document.getElementById('stage-wrap');
+  SZ = Math.max(300, Math.min(wrapEl.clientWidth - 24, wrapEl.clientHeight - 24, 560));
+  DPR = window.devicePixelRatio || 1;
+  cv.width = SZ * DPR; cv.height = SZ * DPR;
+  cv.style.width = SZ + 'px'; cv.style.height = SZ + 'px';
+}
+window.addEventListener('resize', resize);
+function angOf(th) { return th * 2 * Math.PI - Math.PI / 2; }
+
+function draw(ghosts) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, SZ, SZ);
+  const cx = SZ / 2, cy = SZ / 2, R = SZ * 0.36;
+
+  // tick pulse: ring flashes at each generation boundary
+  ctx.strokeStyle = tickPulse > 0 ? `rgba(88,199,212,${0.25 + tickPulse * 0.6})` : '#2a323b';
+  ctx.lineWidth = 1.5 + tickPulse * 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+
+  const tickLen = 4 + P.lattice * 8;
+  for (let i = 0; i < P.n; i++) {
+    const a = angOf(i / P.n);
+    const f = stepFlash[i];
+    ctx.strokeStyle = f > 0 ? `rgba(240,168,64,${f})` : '#3a444f';
+    ctx.lineWidth = f > 0 ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (R - tickLen), cy + Math.sin(a) * (R - tickLen));
+    ctx.lineTo(cx + Math.cos(a) * (R + tickLen), cy + Math.sin(a) * (R + tickLen));
+    ctx.stroke();
+  }
+
+  for (const g of ghosts) {
+    const a = angOf(g);
+    const x = cx + Math.cos(a) * (R + 22), y = cy + Math.sin(a) * (R + 22);
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+    ctx.strokeStyle = '#58c7d4'; ctx.lineWidth = 1.2;
+    ctx.strokeRect(-3.5, -3.5, 7, 7);
+    ctx.restore();
+  }
+
+  if (P.running) {
+    const a = angOf(playPhase);
+    ctx.strokeStyle = 'rgba(88,199,212,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (R * 0.2), cy + Math.sin(a) * (R * 0.2));
+    ctx.lineTo(cx + Math.cos(a) * (R + 14), cy + Math.sin(a) * (R + 14));
+    ctx.stroke();
+  }
+
+  // particles: solid = latched (audible), faint trail = previous vis position
+  for (const p of particles) {
+    const a = angOf(p.vis);
+    const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+    const f = flash.get(p.id) || 0;
+    const r = 7 + f * 7;
+    if (f > 0) {
+      ctx.fillStyle = `rgba(240,168,64,${f * 0.25})`;
+      ctx.beginPath(); ctx.arc(x, y, r + 10, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = '#f0a840';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = '#14181d';
+    ctx.font = `500 ${9 + f * 2}px 'IBM Plex Mono', monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(p.id % 100), x, y + 0.5);
+    // stored energy whisker (pending velocity, applies at next tick)
+    if (Math.abs(p.om) > 0.02) {
+      const tang = a + Math.PI / 2;
+      const L = Math.min(34, Math.abs(p.om) * 60) * Math.sign(p.om);
+      ctx.strokeStyle = 'rgba(88,199,212,0.65)';
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(tang) * L, y + Math.sin(tang) * L);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  ctx.fillStyle = '#6b7784';
+  ctx.font = `11px 'IBM Plex Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`E(${particles.length},${P.n}) · gen ${generation}`, cx, cy - 8);
+  ctx.fillStyle = '#c9d2da';
+  ctx.font = `500 13px 'IBM Plex Mono', monospace`;
+  ctx.fillText(P.running ? `${P.bpm} bpm · ${P.clockMode}` : 'stopped', cx, cy + 10);
+}
+
+/* ---------------- Pattern readout ---------------- */
+const patEl = document.getElementById('pattern');
+function renderPattern(ghosts) {
+  const counts = new Array(P.n).fill(0);
+  for (const p of particles) counts[Math.round(p.th * P.n) % P.n]++;
+  const ghostCells = new Set(ghosts.map(g => Math.round(g * P.n) % P.n));
+  if (patEl.childElementCount !== P.n) {
+    patEl.innerHTML = '';
+    for (let i = 0; i < P.n; i++) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      patEl.appendChild(c);
+    }
+  }
+  for (let i = 0; i < P.n; i++) {
+    patEl.children[i].className = 'cell'
+      + (counts[i] > 0 ? ' on' : '')
+      + (counts[i] > 1 ? ' multi' : '')
+      + (ghostCells.has(i) ? ' ghost' : '');
+  }
+}
+
+/* ---------------- Main loop ---------------- */
+const eqFill = document.getElementById('eq-fill');
+const vEq = document.getElementById('v-eq');
+const readout = document.getElementById('readout');
+let frame = 0;
+function loop(t) {
+  if (lastT === null) lastT = t;
+  const dt = Math.min(0.05, (t - lastT) / 1000);
+  lastT = t;
+
+  if (P.clockMode === 'free') {
+    // v1 behavior: continuous wall-clock physics
+    const sub = 4;
+    for (let i = 0; i < sub; i++) integrate(dt / sub);
+    for (const p of particles) p.vis = p.th;
+  } else {
+    // display eases toward latched position after each tick (legible jump)
+    for (const p of particles) {
+      const d = sdist(p.vis, p.th);
+      p.vis = p.drag ? p.th : wrap(p.vis + d * Math.min(1, dt * 14));
+    }
+  }
+
+  advancePlayhead(dt);
+
+  for (const [id, f] of flash) { const nf = f - dt * 6; nf <= 0 ? flash.delete(id) : flash.set(id, nf); }
+  for (let i = 0; i < P.n; i++) stepFlash[i] = Math.max(0, stepFlash[i] - dt * 4);
+  tickPulse = Math.max(0, tickPulse - dt * 5);
+
+  const { ghosts, rms } = ghostPositions();
+  draw(ghosts);
+  if (frame % 4 === 0) {
+    renderPattern(ghosts);
+    eqFill.style.transform = `scaleX(${Math.min(1, rms / 0.12)})`;
+    vEq.textContent = rms < 0.004 ? 'settled ✓' : (rms * 100).toFixed(1);
+    const kinetic = particles.reduce((s, p) => s + p.om * p.om, 0);
+    const c = new Array(P.n).fill(0);
+    particles.forEach(p => c[Math.round(p.th * P.n) % P.n]++);
+    readout.innerHTML =
+      `pattern <b>${c.map(x => x ? 'x' : '·').join('')}</b><br>` +
+      `stored energy <b>${kinetic.toFixed(3)}</b> · generation <b>${generation}</b>`;
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- Interaction ---------------- */
+function ptrTheta(e) {
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left - SZ / 2, y = e.clientY - r.top - SZ / 2;
+  return wrap((Math.atan2(y, x) + Math.PI / 2) / (2 * Math.PI));
+}
+let dragging = null;
+cv.addEventListener('pointerdown', e => {
+  audio();
+  const th = ptrTheta(e);
+  let best = null, bd = 0.06;
+  for (const p of particles) {
+    const d = Math.abs(sdist(p.th, th));
+    if (d < bd) { bd = d; best = p; }
+  }
+  if (best) { dragging = best; best.drag = true; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; }
+});
+cv.addEventListener('pointermove', e => {
+  if (dragging) { dragging.th = ptrTheta(e); dragging.vis = dragging.th; dragging.om = 0; }
+});
+function endDrag() { if (dragging) { dragging.drag = false; dragging = null; cv.style.cursor = 'grab'; } }
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+const $ = id => document.getElementById(id);
+function refreshKN() { $('kn').textContent = `k=${particles.length} · n=${P.n}`; }
+
+$('play').addEventListener('click', () => {
+  audio();
+  P.running = !P.running;
+  $('play').textContent = P.running ? '■ STOP' : '▶ RUN';
+  $('play').classList.toggle('active', P.running);
+});
+$('tick-btn').addEventListener('click', () => { audio(); tick(); tickPulse = 1; tickBlip(); });
+$('mute').addEventListener('click', () => {
+  P.muted = !P.muted;
+  $('mute').textContent = P.muted ? '🔇' : '🔊';
+});
+$('kick').addEventListener('click', () => {
+  audio();
+  for (const p of particles) p.om += (Math.random() - 0.5) * 3;
+});
+$('add').addEventListener('click', () => { if (particles.length < 24) { addParticle(); refreshKN(); } });
+$('rem').addEventListener('click', () => { removeParticle(); refreshKN(); });
+
+document.querySelectorAll('#clock-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#clock-seg button').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    P.clockMode = b.dataset.mode;
+  });
+});
+
+function bindSlider(id, valId, fmt, apply) {
+  $(id).addEventListener('input', e => {
+    const v = +e.target.value;
+    apply(v);
+    $(valId).textContent = fmt(v);
+    refreshKN();
+  });
+}
+bindSlider('s-n', 'v-n', v => v, v => { P.n = v; stepFlash = new Array(v).fill(0); });
+bindSlider('s-rlx', 'v-rlx', v => (v / 100).toFixed(2), v => P.relax = v / 100);
+bindSlider('s-rep', 'v-rep', v => (v / 100).toFixed(2), v => P.repulsion = v / 100);
+bindSlider('s-lat', 'v-lat', v => (v / 100).toFixed(2), v => P.lattice = v / 100);
+bindSlider('s-dmp', 'v-dmp', v => (v / 100).toFixed(2), v => P.damping = v / 100);
+bindSlider('s-bpm', 'v-bpm', v => v, v => P.bpm = v);
+
+resize();
+refreshKN();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

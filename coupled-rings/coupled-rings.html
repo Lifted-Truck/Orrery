@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COUPLED RINGS — interlocking elastic Euclid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14181d; --panel: #1b2129; --line: #2a323b;
+    --text: #c9d2da; --dim: #6b7784;
+    --amber: #f0a840; --amber-dim: #8a6425;
+    --violet: #b48be8; --violet-dim: #5d4680;
+    --cyan: #58c7d4;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --disp: 'Space Grotesk', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--disp); min-height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; align-items: baseline; gap: 14px; padding: 14px 20px 10px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; letter-spacing: 0.18em; font-weight: 700; }
+  header h1 .a { color: var(--amber); } header h1 .b { color: var(--violet); }
+  header .sub { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  main { flex: 1; display: flex; flex-wrap: wrap; }
+  #stage-wrap { flex: 1 1 420px; display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 380px; }
+  canvas#ring { touch-action: none; cursor: grab; max-width: 100%; }
+  aside { flex: 0 1 350px; border-left: 1px solid var(--line); background: var(--panel); padding: 16px; display: flex; flex-direction: column; gap: 13px; min-width: 310px; }
+  @media (max-width: 800px) { aside { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--line); } }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; }
+  label.slider { display: block; }
+  label.slider .lab { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--dim); margin-bottom: 3px; letter-spacing: 0.05em; }
+  label.slider .lab b { color: var(--text); font-weight: 500; }
+  input[type=range] { width: 100%; appearance: none; -webkit-appearance: none; height: 20px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--text); margin-top: -5.5px; border: 2px solid var(--bg); }
+  input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--cyan); }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--line); }
+  input[type=range]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--text); border: 2px solid var(--bg); }
+  button {
+    font-family: var(--mono); font-size: 11px; background: transparent; color: var(--text);
+    border: 1px solid var(--line); padding: 7px 9px; cursor: pointer; letter-spacing: 0.05em;
+    transition: border-color .12s, color .12s;
+  }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  button.primary { border-color: var(--amber-dim); color: var(--amber); }
+  button.active { background: var(--amber); color: #14181d; border-color: var(--amber); }
+  .seg { display: flex; }
+  .seg button { flex: 1; border-right-width: 0; }
+  .seg button:last-child { border-right-width: 1px; }
+  .seg button.sel { background: var(--line); color: var(--amber); }
+  .sect-title { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.2em; text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .sect-title.ra { color: var(--amber); border-color: var(--amber-dim); }
+  .sect-title.rb { color: var(--violet); border-color: var(--violet-dim); }
+  #pat-a, #pat-b { display: flex; gap: 2px; flex-wrap: wrap; }
+  .cell { width: 14px; height: 20px; border: 1px solid var(--line); }
+  #pat-a .cell.on { background: var(--amber); border-color: var(--amber); }
+  #pat-b .cell.on { background: var(--violet); border-color: var(--violet); }
+  .cell.clash { outline: 1.5px solid #e05555; outline-offset: 1px; }
+  #readout { font-family: var(--mono); font-size: 11px; color: var(--dim); line-height: 1.7; }
+  #readout b { color: var(--text); font-weight: 500; }
+  .hint { font-family: var(--mono); font-size: 10px; color: var(--dim); line-height: 1.6; }
+  .hint em { color: var(--cyan); font-style: normal; }
+  .hint strong { color: var(--amber); font-weight: 500; }
+  .hint .vb { color: var(--violet); }
+</style>
+</head>
+<body>
+<header>
+  <h1>COUPLED <span class="a">RI</span><span class="b">NGS</span></h1>
+  <span class="sub">ring B feels ring A · couple &lt; 0 magnetize · couple &gt; 0 interlock</span>
+</header>
+<main>
+  <div id="stage-wrap"><canvas id="ring"></canvas></div>
+  <aside>
+    <div class="row">
+      <button id="play" class="primary grow">▶ RUN</button>
+      <button id="tick-btn">⏭ TICK</button>
+      <button id="kick">⚡ KICK</button>
+      <button id="mute">🔊</button>
+    </div>
+    <div class="seg" id="clock-seg">
+      <button data-mode="bar" class="sel">BAR</button>
+      <button data-mode="step">STEP</button>
+      <button data-mode="free">FREE</button>
+    </div>
+
+    <div class="sect-title ra">Ring A — inner (leader)</div>
+    <div class="row">
+      <button id="a-rem">−</button>
+      <span class="grow" style="text-align:center;font-family:var(--mono);font-size:12px" id="a-kn">k=3 · n=16</span>
+      <button id="a-add">+</button>
+    </div>
+    <label class="slider">
+      <span class="lab"><span>A feels B (coupling)</span><b id="v-ca">0.00</b></span>
+      <input type="range" id="s-ca" min="-100" max="100" value="0">
+    </label>
+
+    <div class="sect-title rb">Ring B — outer (responder)</div>
+    <div class="row">
+      <button id="b-rem">−</button>
+      <span class="grow" style="text-align:center;font-family:var(--mono);font-size:12px" id="b-kn">k=4 · n=16</span>
+      <button id="b-add">+</button>
+    </div>
+    <label class="slider">
+      <span class="lab"><span>B feels A (coupling)</span><b id="v-cb">+0.70</b></span>
+      <input type="range" id="s-cb" min="-100" max="100" value="70">
+    </label>
+
+    <div class="sect-title">Shared physics</div>
+    <label class="slider">
+      <span class="lab"><span>lattice wells n</span><b id="v-n">16</b></span>
+      <input type="range" id="s-n" min="4" max="32" value="16">
+    </label>
+    <label class="slider">
+      <span class="lab"><span>repulsion · lattice · damping · relax</span><b id="v-4"></b></span>
+    </label>
+    <div class="row" style="gap:6px">
+      <input type="range" id="s-rep" min="0" max="200" value="100" style="flex:1" title="repulsion">
+      <input type="range" id="s-lat" min="0" max="200" value="60" style="flex:1" title="lattice">
+      <input type="range" id="s-dmp" min="2" max="200" value="35" style="flex:1" title="damping">
+      <input type="range" id="s-rlx" min="1" max="60" value="10" style="flex:1" title="relax/tick">
+    </div>
+    <label class="slider">
+      <span class="lab"><span>tempo</span><b id="v-bpm">120</b></span>
+      <input type="range" id="s-bpm" min="40" max="200" value="120">
+    </label>
+
+    <div class="sect-title">Latched patterns <span style="float:right;color:#e05555">□ = collision</span></div>
+    <div id="pat-a"></div>
+    <div id="pat-b"></div>
+    <div id="readout"></div>
+    <div class="hint">
+      <strong>Ring A</strong> (inner, low voice) and <span class="vb">ring B</span> (outer, high voice)
+      each want internal evenness + the grid; the coupling adds cross-ring force.
+      <strong>B feels A &gt; 0</strong>: B is repelled by A's onsets → settles into the
+      <em>complementary</em> rhythm (interlock). <strong>&lt; 0</strong>: B snaps onto A (doubling).
+      A's coupling at 0 makes it a pure leader; raise both for mutual negotiation.
+      Same bar-latched map: perturb, then hear the duet renegotiate generation by generation.
+    </div>
+  </aside>
+</main>
+
+<script>
+'use strict';
+
+/* ---------------- State ---------------- */
+const P = {
+  n: 16, bpm: 120,
+  repulsion: 1.0, lattice: 0.6, damping: 0.35, relax: 0.10,
+  coupleA: 0.0,   // A feels B
+  coupleB: 0.7,   // B feels A  (+ repel/interlock, − attract/magnetize)
+  clockMode: 'bar',
+  running: false, muted: false,
+};
+const rings = {
+  A: { parts: [], nextId: 0, color: '#f0a840', base: 110 },
+  B: { parts: [], nextId: 0, color: '#b48be8', base: 330 },
+};
+let playPhase = 0, prevPhase = 0, lastT = null, generation = 0, tickPulse = 0;
+let flash = new Map();   // "R:id" -> age
+
+function wrap(x) { return ((x % 1) + 1) % 1; }
+function sdist(a, b) { return wrap(b - a + 0.5) - 0.5; }
+
+function addParticle(R, at) {
+  const r = rings[R];
+  let th;
+  if (at !== undefined) th = wrap(at);
+  else if (r.parts.length === 0) th = R === 'A' ? 0 : 0.5 / P.n;
+  else {
+    const s = [...r.parts].sort((a, b) => a.th - b.th);
+    let best = -1, bi = 0;
+    for (let i = 0; i < s.length; i++) {
+      const g = wrap(s[(i + 1) % s.length].th - s[i].th);
+      if (g > best) { best = g; bi = i; }
+    }
+    th = wrap(s[bi].th + best / 2 + (Math.random() - 0.5) * 0.02);
+  }
+  r.parts.push({ th, vis: th, om: 0, id: r.nextId++ });
+}
+function removeParticle(R) { if (rings[R].parts.length > 1) rings[R].parts.pop(); }
+for (let i = 0; i < 3; i++) addParticle('A', i / 3 + 0.02 * Math.random());
+for (let i = 0; i < 4; i++) addParticle('B', i / 4 + 0.13 + 0.02 * Math.random());
+
+/* ---------------- Physics ---------------- */
+function integrate(dt) {
+  const K = P.repulsion * 0.004;
+  const A = P.lattice * 3.0;
+  const c = P.damping * 8.0;
+  const eps = 0.0004, epsX = 0.0012;
+  const F = { A: new Array(rings.A.parts.length).fill(0), B: new Array(rings.B.parts.length).fill(0) };
+
+  for (const R of ['A', 'B']) {
+    const ps = rings[R].parts;
+    for (let i = 0; i < ps.length; i++) {
+      for (let j = i + 1; j < ps.length; j++) {
+        const d = sdist(ps[i].th, ps[j].th);
+        const f = K * Math.sign(d) / (d * d + eps);
+        F[R][i] -= f; F[R][j] += f;
+      }
+      F[R][i] += -A * Math.sin(2 * Math.PI * P.n * ps[i].th) / P.n;
+      F[R][i] += -c * ps[i].om;
+    }
+  }
+  // cross-coupling: + = repelled by other ring, − = attracted
+  const CX = { A: P.coupleA * 0.004, B: P.coupleB * 0.004 };
+  for (const [R, O] of [['A', 'B'], ['B', 'A']]) {
+    if (CX[R] === 0) continue;
+    const ps = rings[R].parts, os = rings[O].parts;
+    for (let i = 0; i < ps.length; i++) {
+      for (let j = 0; j < os.length; j++) {
+        const d = sdist(ps[i].th, os[j].th);
+        F[R][i] -= CX[R] * Math.sign(d) / (d * d + epsX);
+      }
+    }
+  }
+  for (const R of ['A', 'B']) {
+    const ps = rings[R].parts;
+    for (let i = 0; i < ps.length; i++) {
+      const p = ps[i];
+      if (p.drag) { p.om = 0; continue; }
+      p.om += F[R][i] * dt;
+      p.om = Math.max(-6, Math.min(6, p.om));
+      p.th = wrap(p.th + p.om * dt);
+    }
+  }
+}
+function tick() {
+  const sub = 24;
+  for (let i = 0; i < sub; i++) integrate(P.relax / sub);
+  generation++;
+}
+
+/* ---------------- Audio ---------------- */
+let AC = null;
+function audio() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function trigger(R, p) {
+  flash.set(R + ':' + p.id, 1);
+  if (P.muted) return;
+  const ac = audio(), t = ac.currentTime;
+  const r = rings[R];
+  const base = r.base * Math.pow(2, (p.id % 4) * 3 / 12);
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(base * (R === 'A' ? 2.4 : 1.8), t);
+  o.frequency.exponentialRampToValueAtTime(base, t + (R === 'A' ? 0.06 : 0.03));
+  g.gain.setValueAtTime(R === 'A' ? 0.42 : 0.26, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + (R === 'A' ? 0.25 : 0.12));
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + 0.3);
+  const len = R === 'A' ? 900 : 500;
+  const nb = ac.createBuffer(1, len, ac.sampleRate);
+  const ch = nb.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  const ns = ac.createBufferSource(), ng = ac.createGain();
+  ns.buffer = nb; ng.gain.value = R === 'A' ? 0.22 : 0.16;
+  ns.connect(ng).connect(ac.destination);
+  ns.start(t);
+}
+function tickBlip() {
+  if (P.muted) return;
+  const ac = audio(), t = ac.currentTime;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine'; o.frequency.value = 2500;
+  g.gain.setValueAtTime(0.04, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + 0.04);
+}
+
+/* ---------------- Transport ---------------- */
+function boundaries() {
+  if (P.clockMode === 'bar') return [0];
+  if (P.clockMode === 'step') return Array.from({length: P.n}, (_, i) => i / P.n);
+  return [];
+}
+function advance(dt) {
+  if (!P.running) return;
+  const period = P.n * (60 / P.bpm / 4);
+  prevPhase = playPhase;
+  playPhase = wrap(playPhase + dt / period);
+  const swept = wrap(playPhase - prevPhase);
+  if (P.clockMode !== 'free') {
+    let nT = 0;
+    for (const b of boundaries()) if (wrap(b - prevPhase) > 0 && wrap(b - prevPhase) <= swept) nT++;
+    for (let i = 0; i < nT; i++) { tick(); tickPulse = 1; if (P.clockMode === 'bar') tickBlip(); }
+  }
+  for (const R of ['A', 'B'])
+    for (const p of rings[R].parts)
+      if (wrap(p.th - prevPhase) < swept) trigger(R, p);
+}
+
+/* ---------------- Canvas ---------------- */
+const cv = document.getElementById('ring');
+const ctx = cv.getContext('2d');
+let SZ = 480, DPR = 1;
+function resize() {
+  const el = document.getElementById('stage-wrap');
+  SZ = Math.max(300, Math.min(el.clientWidth - 24, el.clientHeight - 24, 560));
+  DPR = window.devicePixelRatio || 1;
+  cv.width = SZ * DPR; cv.height = SZ * DPR;
+  cv.style.width = SZ + 'px'; cv.style.height = SZ + 'px';
+}
+window.addEventListener('resize', resize);
+function angOf(th) { return th * 2 * Math.PI - Math.PI / 2; }
+const RAD = { A: 0.27, B: 0.385 };
+
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, SZ, SZ);
+  const cx = SZ / 2, cy = SZ / 2;
+  const RA = SZ * RAD.A, RB = SZ * RAD.B;
+
+  // rings
+  for (const [R, RR] of [['A', RA], ['B', RB]]) {
+    ctx.strokeStyle = tickPulse > 0 ? `rgba(88,199,212,${0.2 + tickPulse * 0.5})` : '#2a323b';
+    ctx.lineWidth = 1.5 + tickPulse;
+    ctx.beginPath(); ctx.arc(cx, cy, RR, 0, 7); ctx.stroke();
+  }
+  // lattice ticks between the rings
+  for (let i = 0; i < P.n; i++) {
+    const a = angOf(i / P.n);
+    ctx.strokeStyle = '#3a444f'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (RA - 5), cy + Math.sin(a) * (RA - 5));
+    ctx.lineTo(cx + Math.cos(a) * (RB + 5), cy + Math.sin(a) * (RB + 5));
+    ctx.globalAlpha = 0.35; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  // cross-coupling threads between nearby A/B pairs
+  for (const pa of rings.A.parts) {
+    for (const pb of rings.B.parts) {
+      const d = Math.abs(sdist(pa.th, pb.th));
+      if (d < 0.09) {
+        const strength = Math.max(Math.abs(P.coupleA), Math.abs(P.coupleB));
+        const alpha = (0.09 - d) / 0.09 * 0.55 * strength;
+        if (alpha < 0.03) continue;
+        const attract = (P.coupleB < 0) || (P.coupleA < 0);
+        ctx.strokeStyle = attract ? `rgba(88,199,212,${alpha})` : `rgba(224,85,85,${alpha})`;
+        ctx.lineWidth = 1.5;
+        const aa = angOf(pa.vis), ab = angOf(pb.vis);
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(aa) * RA, cy + Math.sin(aa) * RA);
+        ctx.lineTo(cx + Math.cos(ab) * RB, cy + Math.sin(ab) * RB);
+        ctx.stroke();
+      }
+    }
+  }
+  // playhead
+  if (P.running) {
+    const a = angOf(playPhase);
+    ctx.strokeStyle = 'rgba(88,199,212,0.9)'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (RA * 0.55), cy + Math.sin(a) * (RA * 0.55));
+    ctx.lineTo(cx + Math.cos(a) * (RB + 16), cy + Math.sin(a) * (RB + 16));
+    ctx.stroke();
+  }
+  // particles
+  for (const [R, RR] of [['A', RA], ['B', RB]]) {
+    const col = rings[R].color;
+    for (const p of rings[R].parts) {
+      const a = angOf(p.vis);
+      const x = cx + Math.cos(a) * RR, y = cy + Math.sin(a) * RR;
+      const f = flash.get(R + ':' + p.id) || 0;
+      const r = 6.5 + f * 6;
+      if (f > 0) {
+        ctx.fillStyle = col; ctx.globalAlpha = f * 0.25;
+        ctx.beginPath(); ctx.arc(x, y, r + 9, 0, 7); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      ctx.fillStyle = '#14181d';
+      ctx.font = `500 9px 'IBM Plex Mono', monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(p.id % 100), x, y + 0.5);
+      if (Math.abs(p.om) > 0.02) {
+        const tang = a + Math.PI / 2;
+        const L = Math.min(28, Math.abs(p.om) * 55) * Math.sign(p.om);
+        ctx.strokeStyle = 'rgba(88,199,212,0.6)';
+        ctx.setLineDash([3, 3]); ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(tang) * L, y + Math.sin(tang) * L);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+  }
+  ctx.fillStyle = '#6b7784';
+  ctx.font = `10px 'IBM Plex Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`gen ${generation}`, cx, cy - 7);
+  ctx.fillStyle = '#c9d2da';
+  ctx.font = `500 12px 'IBM Plex Mono', monospace`;
+  ctx.fillText(P.running ? `${P.bpm} bpm` : 'stopped', cx, cy + 9);
+}
+
+/* ---------------- Pattern strips + interlock metric ---------------- */
+const patA = document.getElementById('pat-a'), patB = document.getElementById('pat-b');
+function cellsOf(R) {
+  const c = new Array(P.n).fill(0);
+  for (const p of rings[R].parts) c[Math.round(p.th * P.n) % P.n]++;
+  return c;
+}
+function renderPatterns() {
+  const cA = cellsOf('A'), cB = cellsOf('B');
+  for (const [el, c, other] of [[patA, cA, cB], [patB, cB, cA]]) {
+    if (el.childElementCount !== P.n) {
+      el.innerHTML = '';
+      for (let i = 0; i < P.n; i++) el.appendChild(Object.assign(document.createElement('div'), { className: 'cell' }));
+    }
+    for (let i = 0; i < P.n; i++) {
+      el.children[i].className = 'cell'
+        + (c[i] > 0 ? ' on' : '')
+        + (c[i] > 0 && other[i] > 0 ? ' clash' : '');
+    }
+  }
+  let clashes = 0;
+  for (let i = 0; i < P.n; i++) if (cA[i] > 0 && cB[i] > 0) clashes++;
+  const kB = rings.B.parts.length;
+  return { clashes, interlock: kB ? 1 - clashes / Math.min(kB, rings.A.parts.length || 1) : 1 };
+}
+
+/* ---------------- Main loop ---------------- */
+const readout = document.getElementById('readout');
+let frame = 0;
+function loop(t) {
+  if (lastT === null) lastT = t;
+  const dt = Math.min(0.05, (t - lastT) / 1000);
+  lastT = t;
+  if (P.clockMode === 'free') {
+    for (let i = 0; i < 4; i++) integrate(dt / 4);
+    for (const R of ['A', 'B']) for (const p of rings[R].parts) p.vis = p.th;
+  } else {
+    for (const R of ['A', 'B']) for (const p of rings[R].parts) {
+      const d = sdist(p.vis, p.th);
+      p.vis = p.drag ? p.th : wrap(p.vis + d * Math.min(1, dt * 14));
+    }
+  }
+  advance(dt);
+  for (const [id, f] of flash) { const nf = f - dt * 6; nf <= 0 ? flash.delete(id) : flash.set(id, nf); }
+  tickPulse = Math.max(0, tickPulse - dt * 5);
+  draw();
+  if (frame % 5 === 0) {
+    const { clashes, interlock } = renderPatterns();
+    readout.innerHTML =
+      `collisions <b>${clashes}</b> · interlock <b>${(interlock * 100).toFixed(0)}%</b> · generation <b>${generation}</b>`;
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- Interaction ---------------- */
+function ptrInfo(e) {
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left - SZ / 2, y = e.clientY - r.top - SZ / 2;
+  const rad = Math.hypot(x, y) / SZ;
+  const th = wrap((Math.atan2(y, x) + Math.PI / 2) / (2 * Math.PI));
+  const R = Math.abs(rad - RAD.A) < Math.abs(rad - RAD.B) ? 'A' : 'B';
+  return { th, R };
+}
+let dragging = null;
+cv.addEventListener('pointerdown', e => {
+  audio();
+  const { th, R } = ptrInfo(e);
+  let best = null, bd = 0.06;
+  for (const p of rings[R].parts) {
+    const d = Math.abs(sdist(p.th, th));
+    if (d < bd) { bd = d; best = p; }
+  }
+  if (best) { dragging = best; best.drag = true; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; }
+});
+cv.addEventListener('pointermove', e => {
+  if (dragging) { const { th } = ptrInfo(e); dragging.th = th; dragging.vis = th; dragging.om = 0; }
+});
+function endDrag() { if (dragging) { dragging.drag = false; dragging = null; cv.style.cursor = 'grab'; } }
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+const $ = id => document.getElementById(id);
+function refresh() {
+  $('a-kn').textContent = `k=${rings.A.parts.length} · n=${P.n}`;
+  $('b-kn').textContent = `k=${rings.B.parts.length} · n=${P.n}`;
+}
+$('play').addEventListener('click', () => {
+  audio(); P.running = !P.running;
+  $('play').textContent = P.running ? '■ STOP' : '▶ RUN';
+  $('play').classList.toggle('active', P.running);
+});
+$('tick-btn').addEventListener('click', () => { audio(); tick(); tickPulse = 1; tickBlip(); });
+$('mute').addEventListener('click', () => { P.muted = !P.muted; $('mute').textContent = P.muted ? '🔇' : '🔊'; });
+$('kick').addEventListener('click', () => {
+  audio();
+  for (const R of ['A', 'B']) for (const p of rings[R].parts) p.om += (Math.random() - 0.5) * 3;
+});
+$('a-add').addEventListener('click', () => { if (rings.A.parts.length < 16) { addParticle('A'); refresh(); } });
+$('a-rem').addEventListener('click', () => { removeParticle('A'); refresh(); });
+$('b-add').addEventListener('click', () => { if (rings.B.parts.length < 16) { addParticle('B'); refresh(); } });
+$('b-rem').addEventListener('click', () => { removeParticle('B'); refresh(); });
+document.querySelectorAll('#clock-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#clock-seg button').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    P.clockMode = b.dataset.mode;
+  });
+});
+function bindSlider(id, valId, fmt, apply) {
+  $(id).addEventListener('input', e => {
+    const v = +e.target.value;
+    apply(v);
+    if (valId) $(valId).textContent = fmt(v);
+  });
+}
+bindSlider('s-ca', 'v-ca', v => (v >= 0 ? '+' : '') + (v / 100).toFixed(2), v => P.coupleA = v / 100);
+bindSlider('s-cb', 'v-cb', v => (v >= 0 ? '+' : '') + (v / 100).toFixed(2), v => P.coupleB = v / 100);
+bindSlider('s-n', 'v-n', v => v, v => { P.n = v; refresh(); });
+bindSlider('s-rep', null, v => v, v => P.repulsion = v / 100);
+bindSlider('s-lat', null, v => v, v => P.lattice = v / 100);
+bindSlider('s-dmp', null, v => v, v => P.damping = v / 100);
+bindSlider('s-rlx', null, v => v, v => P.relax = v / 100);
+bindSlider('s-bpm', 'v-bpm', v => v, v => P.bpm = v);
+
+resize();
+refresh();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

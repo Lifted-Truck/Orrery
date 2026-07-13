@@ -1,0 +1,40 @@
+{
+  "schema": "project-manifest.0 (draft — kit v2 will formalize); COMPOSITE variant",
+  "status": "PROVISIONAL — scaffolded 2026-07-12; human to ratify at O0 gate",
+  "composite": {
+    "kind": "umbrella — one plugin, contract-bound sub-territories",
+    "contract": "sequencer-studio-architecture.md",
+    "territories": [
+      { "path": "shell", "role": "studio host (owns the contract implementation)" },
+      { "path": "elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "status": "spec validated" },
+      { "path": "measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "status": "spec validated" },
+      { "path": "coupled-rings", "role": "engine", "spec": null, "prototype": "coupled-rings.html", "status": "SPEC GAP — build blocked" }
+    ]
+  },
+  "survey": {
+    "what_is_it": "app (audio plugin) — JUCE/C++20 VST3+AU(+CLAP) generative multi-engine MIDI sequencer",
+    "architecture_rung": {
+      "choice": "2→3 (escalated at the O2 gate)",
+      "menu": ["1: single thread", "2: thread + subagents/verifier", "3: organ fleet"],
+      "earned_by": "genuine contract-bound seams (IEngine) + independently-verifiable engines with their own acceptance tests and reference prototypes — but one shared build/audio-thread. Prove the seam single-threaded (shell + Elastic), then parallelize engines as organs. Human-chosen at O0.",
+      "escalation_trigger": "ROADMAP O2 green (IEngine seam proven by Elastic Euclid)"
+    },
+    "domain_core_llm_must_not_own": "the physics/measure/onset math — repulsion+lattice integration, inverse-CDF onset placement, Bjorklund equilibrium, sample-accurate scheduling, PCG32 derivation. AI may propose presets/curves/regimes for review; never emits a trigger time or pitch by judgment.",
+    "oracle_shape": {
+      "goldens": "per-engine acceptance tests (already written in each spec) + the validated HTML prototype as behavioral reference; determinism = bit-identical trace",
+      "ci": "C++ build + ctest; audio-plugin validation (auval SUCCEEDED, codesign seal) per global build gotchas; Release for any perf claim"
+    },
+    "second_implementation": false,
+    "consumers_and_providers": {
+      "consumes": ["Tonality (JSON contract for scaleQuant + pitch — boundary module, pinned, degrade-visibly)"],
+      "consumed_by": [],
+      "note": "trace output is wend-compatible; a trace + state reconstructs a performance"
+    },
+    "parallel_audit_thread": false,
+    "knowledge_loop_tags": ["engine-contract", "determinism-trace", "rt-safety", "latch-semantics", "offset-layer", "juce-build", "tonality-boundary"],
+    "lifespan_autonomy": {
+      "lifespan": "long-lived (flagship instrument)",
+      "autonomy_tier": "local dev; build/validate/codesign are human-run (machine-local, sandbox-sensitive); contract changes human-gated"
+    }
+  }
+}

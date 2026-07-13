@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# verify — oracle dispatcher for Orrery. Usage: ./verify fast|full|report
+# Contract: exit 0 = green, nonzero = red. Writes .harness/last-verify.json.
+#
+# PRE-BUILD STAGE (O0): no C++ build exists yet, so `fast` validates the
+# scaffold's structural coherence only. Once the CMake build lands (O1),
+# extend fast() with `cmake --build <abs> && ctest` and full() with the
+# audio-plugin validation dance (auval SUCCEEDED, codesign --verify) per the
+# global CLAUDE.md build gotchas. Do NOT claim a green build gate until then.
+set -uo pipefail
+cd "$(dirname "$0")"
+TARGET="${1:-fast}"; HARNESS_DIR=".harness"; mkdir -p "$HARNESS_DIR"
+
+record() {
+  local h; h=$(git rev-parse --short HEAD 2>/dev/null || echo no-git)
+  printf '{"target":"%s","exit":%d,"git":"%s","ts":"%s","stage":"pre-build"}\n' \
+    "$1" "$2" "$h" "$(date -u +%FT%TZ)" > "$HARNESS_DIR/last-verify.json"
+  return "$2"
+}
+
+fast() {
+  # O0 structural gate: charter + contract + every declared territory present,
+  # each engine territory has a sub-charter, manifest is valid JSON.
+  local ok=0
+  for f in CLAUDE.md ROADMAP.md DECISIONS.md project.manifest.json \
+           sequencer-studio-architecture.md; do
+    [ -f "$f" ] || { echo "verify: missing $f" >&2; ok=1; }
+  done
+  python3 -c "import json;json.load(open('project.manifest.json'))" 2>/dev/null \
+    || { echo "verify: manifest is not valid JSON" >&2; ok=1; }
+  # every territory in the manifest exists and has a sub-charter
+  python3 - <<'PY' || ok=1
+import json,os,sys
+m=json.load(open("project.manifest.json"))
+bad=0
+for t in m["composite"]["territories"]:
+    p=t["path"]
+    if not os.path.isdir(p): print(f"verify: territory dir missing: {p}"); bad=1
+    if not os.path.isfile(os.path.join(p,"CLAUDE.md")): print(f"verify: territory sub-charter missing: {p}/CLAUDE.md"); bad=1
+    spec=t.get("spec")
+    if spec and not os.path.isfile(os.path.join(p,spec)): print(f"verify: declared spec missing: {p}/{spec}"); bad=1
+sys.exit(bad)
+PY
+  [ $ok -eq 0 ] && echo "verify[fast]: scaffold structurally coherent (pre-build stage)"
+  return $ok
+}
+
+full() { fast; }  # identical until the build exists (O1)
+
+case "$TARGET" in
+  fast)   fast;  record fast  $? ;;
+  full)   full;  record full  $? ;;
+  report) cat "$HARNESS_DIR/last-verify.json" 2>/dev/null || { echo '{"target":null,"exit":null}'; exit 1; } ;;
+  *)      echo "usage: ./verify fast|full|report" >&2; exit 64 ;;
+esac

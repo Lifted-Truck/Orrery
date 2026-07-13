@@ -1,0 +1,8 @@
+# LIBRARY — Orrery durable lessons
+
+Evidence-backed, falsifiable. New entries enter `tier: candidate`; promote on
+a second independent occurrence. Prefer not writing over writing unverified.
+
+[L0001] Evolution happens at latch boundaries, never continuously | canonical | added: 2026-07-12 | tags: engine-contract, latch-semantics, determinism-trace | lesson: both engines independently validated that pattern evolution must be a musical-time-clocked iterated map (pattern[t+1]=relax(pattern[t])), latched within each division — continuous/wall-clock evolution reads as inaudible decorative smear and was tried-and-rejected in prototyping. Any "improvement" toward continuous recomputation reverts a validated decision. | evidence: elastic-euclid-spec §Core design decision + §2.4; measured-euclid-spec §2.4 (both mark it "do not improve"). | falsifier: a future engine whose musical value is genuinely in sub-division motion (e.g. audible glissando sequencing) — then latch-only is that engine's wrong default, though the determinism/trace contract still holds.
+
+[L0002] The architecture contract outranks the elastic spec's shell sections | canonical | added: 2026-07-12 | tags: engine-contract, juce-build | lesson: elastic-euclid-spec predates sequencer-studio-architecture.md; its model/physics/determinism/tests stand but its plugin-shell sections (§3-4) are superseded. Build the shell from the contract, not the engine spec, or you get a per-engine plugin instead of the studio. | evidence: architecture doc "Note on precedence"; root DECISIONS #1. | falsifier: the contract is ever revised to re-delegate shell concerns back to an engine spec (would need its own DECISIONS entry).

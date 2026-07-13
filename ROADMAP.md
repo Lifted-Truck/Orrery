@@ -1,0 +1,67 @@
+# Orrery — ROADMAP
+
+> **Single source of truth for direction.** Phase gates are never weakened to
+> pass. Derived from `sequencer-studio-architecture.md` §8 build order, with
+> the rung-2→3 escalation made explicit. The contract doc defines *what*;
+> this defines *in what order and gated by what*.
+
+## Build sequence (phase-gated)
+
+### Rung 2 — prove the seam (single-threaded lead)
+
+- **O0 — Scaffold + contract ratification.** Repo, charter, sub-territory
+  CLAUDE.md, manifest, Tonality brief filed. *Gate: human ratifies the
+  manifest, the rung path, and the contract as frozen-for-Phase-1.* **← here**
+- **O1 — Studio shell.** Clock service (host-synced, sample-accurate latch
+  callbacks, manual TICK), one engine slot, offset layer with `walk` +
+  `accent` + hand editing (lock cells), MIDI router, trace (JSONL ring
+  buffer). No engine yet — a stub engine proves the slot. *Gate: shell builds
+  as a loadable VST3/AU (codesign seal verified, `auval` SUCCEEDED); offset
+  layer lock/generator coexistence unit-tested; trace round-trips.*
+- **O2 — Elastic Euclid engine.** Implement the validated spec against the
+  `IEngine` contract. *Gate: the spec's acceptance tests all green — §8.1
+  equilibrium (E(k,n) recovery), §8.2 determinism bit-identity, §8.3 ±1-sample
+  timing across rates/blocks, §8.4 no-alloc in processBlock, §8.5 k-change
+  latch invariant; behavior matches `elastic-euclid-2.html` reference.*
+  **← this gate is the rung-2→3 escalation trigger:** the IEngine seam is now
+  proven by a real engine.
+
+### Rung 3 — parallelize engines as organs (earned at O2)
+
+- **O3 — Measured Euclid engine** (organ; territory `measured-euclid/`).
+  *Gate: its spec §6 acceptance tests green (Euclid recovery, inverse
+  accuracy, latch invariant, monotone deformation, determinism); matches
+  `measured-euclid.html`.*
+- **O4 — Coupled Rings engine** (organ). **BLOCKED: spec not yet written.**
+  Sub-gate O4a: write `coupled-rings/coupled-rings-spec.md` from the prototype
+  (ring-coupling model, sourceId = (ring,particle) packed) — human-reviewed.
+  Then O4b build. *Gate: spec acceptance tests green.*
+- **O5 — Generator set completion.** `contour`, `arp`, `scaleQuant`
+  (scaleQuant requires the Tonality boundary — O-int below). *Gate: each
+  generator seeded, latched per bar, deterministic order, trace-recorded;
+  locked-cell skip verified.*
+- **O6 — Cross-engine modulation ports (v2 horizon).** Named output signals /
+  modulation inputs per the contract §7; v1 ships the port structure, v2 wires
+  patches (measured w(t) → elastic well depths; ring A → ring B). *Gate:
+  design-only in v1 — the slot/port model exists and is state-versioned.*
+
+### Cross-cutting
+
+- **O-int — Tonality integration.** Boundary module for the scaleQuant/pitch
+  JSON contract; pin the version; degrade visibly (static note map fallback
+  when Tonality absent). Blocks the `scaleQuant` generator only. See
+  `integrations/tonality/brief.md`.
+
+## Decisions on record
+See DECISIONS.md (precedence ruling, rung path, Tonality consumer, Coupled
+Rings spec gap).
+
+## Target consumers / applications
+The plugin itself (the musician). Trace output is wend-compatible (a trace +
+state reconstructs a performance) — potential future consumer of Orrery traces.
+
+## Deferred / demoted
+- FREE clock mode (continuous evolution) — kept only as a legacy/comparison
+  mode; "usually not what you want" (elastic spec §2.4).
+- Per-particle mass, asymmetric/pinned particles, audio-derived measures,
+  bifurcation presets — engine roadmaps, post-v1.
