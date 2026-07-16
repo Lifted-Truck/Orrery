@@ -21,7 +21,10 @@ void HeaderBar::update(const GuiSnapshot& s) {
 }
 
 void HeaderBar::resized() {
-    tick_.setBounds(getWidth() - 160, (getHeight() - 22) / 2, 52, 22);
+    // Right-to-left chain: [transport text][TICK][pill]. TICK sits just left of
+    // the pill; paint() ends the text left of TICK so nothing can overlap.
+    const int pillW = 96, h = 22;
+    tick_.setBounds(getWidth() - theme::pad - pillW - 10 - 52, (getHeight() - h) / 2, 52, h);
 }
 
 void HeaderBar::paint(juce::Graphics& g) {
@@ -44,15 +47,17 @@ void HeaderBar::paint(juce::Graphics& g) {
     g.setColour(theme::dim);
     g.drawText("sequencer studio", x + 14, 0, 160, getHeight(), juce::Justification::centredLeft);
 
-    // Transport chip, right-aligned. Pill last.
+    // Transport chip, right-aligned. Pill last; text ends left of TICK when the
+    // TICK chip is showing (transport stopped) so the two never overlap.
     const int pillW = 96, pillH = 22;
     const auto pill = juce::Rectangle<int>(getWidth() - theme::pad - pillW,
                                            (getHeight() - pillH) / 2, pillW, pillH);
+    const int textEnd = tick_.isVisible() ? tick_.getX() - 12 : pill.getX() - 12;
     juce::String t = juce::String(bpm_, 1) + " BPM · " + juce::String(sigN_) + "/" + juce::String(sigD_)
                    + " · bar " + juce::String(bar_);
     g.setFont(theme::mono(11.0f));
     g.setColour(theme::text);
-    g.drawText(t, pill.getX() - 250, 0, 242, getHeight(), juce::Justification::centredRight);
+    g.drawText(t, textEnd - 250, 0, 250, getHeight(), juce::Justification::centredRight);
 
     if (playing_) {
         g.setColour(theme::cyan.withAlpha(0.35f));
@@ -69,12 +74,27 @@ void HeaderBar::paint(juce::Graphics& g) {
 }
 
 // ── EngineTabs ───────────────────────────────────────────────────────────────
+// Tab layout is measured from real font metrics (a character-count estimate
+// made kickers collide with the next tab's name): [padL name gap kicker padR].
+namespace {
+constexpr int kTabPadL = 14, kTabPadR = 14, kTabKickerGap = 8, kTabSpacing = 4;
+int stringW(const juce::Font& f, const juce::String& s) {
+    return (int)std::ceil(juce::GlyphArrangement::getStringWidth(f, s));
+}
+} // namespace
+
 juce::Rectangle<int> EngineTabs::tabArea(int i) const {
+    const auto nameF   = theme::label(11.0f);
+    const auto kickerF = theme::mono(9.0f);
     int x = 12;
-    for (int j = 0; j < i; ++j)
-        x += 40 + 14 * (tabs_[(size_t)j].name.length() + tabs_[(size_t)j].kicker.length()) / 2;
-    const auto& t = tabs_[(size_t)i];
-    return { x, 0, 40 + 14 * (t.name.length() + t.kicker.length()) / 2, getHeight() };
+    for (int j = 0; j <= i; ++j) {
+        const auto& t = tabs_[(size_t)j];
+        const int w = kTabPadL + stringW(nameF, t.name) + kTabKickerGap
+                    + stringW(kickerF, t.kicker) + kTabPadR;
+        if (j == i) return { x, 0, w, getHeight() };
+        x += w + kTabSpacing;
+    }
+    return {};
 }
 
 void EngineTabs::paint(juce::Graphics& g) {
@@ -84,19 +104,28 @@ void EngineTabs::paint(juce::Graphics& g) {
     g.setColour(theme::line);
     g.fillRect(0, getHeight() - 1, getWidth(), 1);
 
+    const auto nameF   = theme::label(11.0f);
+    const auto kickerF = theme::mono(9.0f);
     for (int i = 0; i < (int)tabs_.size(); ++i) {
         const auto& t = tabs_[(size_t)i];
         const auto r = tabArea(i);
         const bool sel = i == selected;
-        g.setFont(theme::label(11.0f));
+
+        int x = r.getX() + kTabPadL;
+        g.setFont(nameF);
         g.setColour(sel ? theme::amber : t.enabled ? theme::dim : theme::dim.withAlpha(0.4f));
-        g.drawText(t.name, r.withTrimmedRight(r.getWidth() / 3), juce::Justification::centredLeft);
-        g.setFont(theme::mono(9.0f));
+        const int nameW = stringW(nameF, t.name);
+        g.drawText(t.name, x, 0, nameW + 2, getHeight(), juce::Justification::centredLeft);
+        x += nameW + kTabKickerGap;
+
+        g.setFont(kickerF);
         g.setColour(theme::dim.withAlpha(t.enabled ? 0.8f : 0.35f));
-        g.drawText(t.kicker, r, juce::Justification::centredRight);
+        g.drawText(t.kicker, x, 0, stringW(kickerF, t.kicker) + 2, getHeight(),
+                   juce::Justification::centredLeft);
+
         if (sel) {
             g.setColour(theme::amber);
-            g.fillRect(r.getX(), getHeight() - 2, r.getWidth() - 8, 2);
+            g.fillRect(r.getX() + kTabPadL, getHeight() - 2, r.getWidth() - kTabPadL - kTabPadR, 2);
         }
     }
     g.setFont(theme::mono(10.0f));
