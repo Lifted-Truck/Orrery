@@ -63,7 +63,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
             juce::AudioParameterFloatAttributes().withLabel("s")),
         // Internal audio on/off: off → Orrery is a silent MIDI generator
         // (drive other tracks); on → it also sounds via the fallback voices.
-        std::make_unique<BoolParam>(P{"internalAudio", 1}, "Internal Audio", true));
+        std::make_unique<BoolParam>(P{"internalAudio", 1}, "Internal Audio", true),
+        // Internal transport (used ONLY when the host provides no ppq — the
+        // standalone). Default on so the standalone plays out of the box.
+        std::make_unique<BoolParam>(P{"run", 1}, "Run", true));
     return layout;
 }
 
@@ -86,6 +89,7 @@ OrreryProcessor::OrreryProcessor()
     p_.damping     = apvts_.getRawParameterValue("damping");
     p_.relax       = apvts_.getRawParameterValue("relax");
     p_.internalAudio = apvts_.getRawParameterValue("internalAudio");
+    p_.run           = apvts_.getRawParameterValue("run");
 }
 
 OrreryProcessor::~OrreryProcessor() {
@@ -104,6 +108,8 @@ void OrreryProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) 
     pendingCount_ = 0;
     lastK_ = -1;
     manualGen_ = -1;
+    internalPpq_ = 0.0;
+    lastEndPpq_ = 0.0;
     if (enableTraceDrain_) {
         auto file = juce::File::getSpecialLocation(juce::File::tempDirectory)
                         .getChildFile("orrery-trace.jsonl");
@@ -162,7 +168,7 @@ void OrreryProcessor::applyParams() {
 }
 
 void OrreryProcessor::doLatch(int64_t gen, double lapPpq, const TransportState& ts,
-                              juce::MidiBuffer& /*midi*/, int /*blockOff*/) {
+                              bool schedule) {
     TickContext ctx; ctx.generation = gen; ctx.clock = clockCfg_; ctx.tempoBpm = ts.bpm;
     ctx.rng = &slotRng_;
     engine_.tick(ctx);
@@ -179,6 +185,8 @@ void OrreryProcessor::doLatch(int64_t gen, double lapPpq, const TransportState& 
     for (size_t i = 0; i < ev.size() && i < kMaxSources; ++i) pod.ev[i] = ev[i];
     traceRing_.push(pod);
 
+    if (!schedule) return;   // manual TICK while stopped: evolve silently
+
     const double lapLen = clockmath::latchIntervalQuarters(clockCfg_, ts);
     double gateQ = gateQuarters_;
     if (gateQ > lapLen * 0.95) gateQ = lapLen * 0.95;
@@ -192,6 +200,20 @@ void OrreryProcessor::doLatch(int64_t gen, double lapPpq, const TransportState& 
         if (pendingCount_ < kMaxPending)
             pending_[pendingCount_++] = {ppqOff, false, note.channel, note.note, note.velocity};
     }
+}
+
+void OrreryProcessor::clearPending(juce::MidiBuffer& midi) {
+    // Emit the pending note-OFFS immediately (their note-ons already went out;
+    // dropping them would leave stuck notes on whatever the MIDI drives).
+    for (int i = 0; i < pendingCount_; ++i) {
+        const SchedEvent& e = pending_[i];
+        if (e.isOn) continue;
+        midi.addEvent(juce::MidiMessage::noteOff(e.channel, e.note), 0);
+        midiOutRing_.push(orrery::MidiOutEvent{
+            static_cast<int16_t>(e.note), static_cast<int16_t>(e.velocity),
+            static_cast<int8_t>(e.channel), 0});
+    }
+    pendingCount_ = 0;
 }
 
 void OrreryProcessor::sweepPending(const TransportState& ts, juce::MidiBuffer& midi) {
@@ -262,12 +284,25 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     midi.ensureSize(2048);
 
     if (ts.isPlaying) {
+        // Transport discontinuity (loop wrap / relocate / start): scheduled
+        // events belong to the old timeline — drop them (offs flushed) rather
+        // than fire them as a burst at the new position.
+        const double blockQ = static_cast<double>(ts.blockSize) / clockmath::samplesPerQuarter(ts);
+        if (std::abs(ts.ppqAtBlockStart - lastEndPpq_) > 0.26 && pendingCount_ > 0)
+            clearPending(midi);
+        lastEndPpq_ = ts.ppqAtBlockStart + blockQ;
+
         LatchPoint lp[64];
         const int nl = clockmath::computeLatches(clockCfg_, ts, lp, 64);
-        for (int i = 0; i < nl; ++i) doLatch(lp[i].index, lp[i].ppq, ts, midi, lp[i].sampleOffset);
+        for (int i = 0; i < nl; ++i) doLatch(lp[i].index, lp[i].ppq, ts, /*schedule=*/true);
     } else {
+        // Stopped: nothing scheduled may survive (a stalled timeline never
+        // drains — pending would clog and then burst on play). Manual TICK
+        // evolves the pattern silently (spec §2.4 latch semantics).
+        if (pendingCount_ > 0) clearPending(midi);
+        lastEndPpq_ = ts.ppqAtBlockStart;
         int mt = manualTicks_.exchange(0, std::memory_order_relaxed);
-        for (int i = 0; i < mt; ++i) { ++manualGen_; doLatch(manualGen_, ts.ppqAtBlockStart, ts, midi, 0); }
+        for (int i = 0; i < mt; ++i) { ++manualGen_; doLatch(manualGen_, ts.ppqAtBlockStart, ts, /*schedule=*/false); }
     }
 
     sweepPending(ts, midi);
@@ -290,6 +325,7 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
         s.bpm = ts.bpm; s.ppq = ts.ppqAtBlockStart;
         s.timeSigNum = ts.timeSigNum; s.timeSigDen = ts.timeSigDen;
         s.isPlaying = ts.isPlaying;
+        s.hasHostTransport = hasHostTransport_;
         snapshots_.publish();
     }
 }
@@ -300,16 +336,33 @@ void OrreryProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     ts.blockSize = buffer.getNumSamples();
     ts.isPlaying = false;
     ts.ppqAtBlockStart = 0.0;
+
+    // Host transport requires an actual ppq position — a playhead alone isn't
+    // enough. The JUCE standalone (and some bridges) provide none, and without
+    // this fallback the plugin can NEVER play there: isPlaying stays false and
+    // no latch ever fires.
+    bool hostTransport = false;
     if (auto* ph = getPlayHead()) {
         if (const auto pos = ph->getPosition()) {
-            ts.isPlaying = pos->getIsPlaying();
-            if (const auto bpm = pos->getBpm()) ts.bpm = *bpm;
-            if (const auto ppq = pos->getPpqPosition()) ts.ppqAtBlockStart = *ppq;
-            if (const auto sig = pos->getTimeSignature()) {
-                ts.timeSigNum = sig->numerator; ts.timeSigDen = sig->denominator;
+            if (const auto ppq = pos->getPpqPosition()) {
+                hostTransport = true;
+                ts.ppqAtBlockStart = *ppq;
+                ts.isPlaying = pos->getIsPlaying();
+                if (const auto bpm = pos->getBpm()) ts.bpm = *bpm;
+                if (const auto sig = pos->getTimeSignature()) {
+                    ts.timeSigNum = sig->numerator; ts.timeSigDen = sig->denominator;
+                }
             }
         }
     }
+    if (!hostTransport) {
+        // Internal free-run clock, gated by the `run` param (header RUN chip).
+        ts.isPlaying = p_.run->load(std::memory_order_relaxed) > 0.5f;
+        ts.ppqAtBlockStart = internalPpq_;
+        if (ts.isPlaying)
+            internalPpq_ += static_cast<double>(ts.blockSize) / clockmath::samplesPerQuarter(ts);
+    }
+    hasHostTransport_ = hostTransport;
     renderBlock(buffer, midi, ts);
 }
 

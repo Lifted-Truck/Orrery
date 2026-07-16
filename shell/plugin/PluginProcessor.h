@@ -88,9 +88,15 @@ public:
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     void applyParams();                       // APVTS → core config (audio thread)
-    void doLatch(int64_t gen, double lapPpq,
-                 const orrery::TransportState& ts, juce::MidiBuffer&, int blockOff);
+    // schedule=false → evolve/decorate/trace only (manual TICK while stopped —
+    // spec §2.4: latched state is visible, but nothing is emitted into a
+    // timeline that isn't advancing).
+    void doLatch(int64_t gen, double lapPpq, const orrery::TransportState& ts,
+                 bool schedule);
     void sweepPending(const orrery::TransportState& ts, juce::MidiBuffer&);
+    // Drop all pending events, emitting note-offs for the pending offs so
+    // downstream instruments aren't left with stuck notes.
+    void clearPending(juce::MidiBuffer&);
 
     // ── Core (framework-free) ────────────────────────────────────────────────
     orrery::ElasticEuclid engine_;   // O2: the equilibrium-rhythm engine
@@ -126,6 +132,7 @@ private:
         std::atomic<float>* damping = nullptr;
         std::atomic<float>* relax = nullptr;
         std::atomic<float>* internalAudio = nullptr;  // gate the fallback voices
+        std::atomic<float>* run = nullptr;            // internal transport (no-host fallback)
     } p_;
     orrery::SpscRing<orrery::GestureEvent, 256>    gestureRing_;
     orrery::SpscRing<orrery::OffsetEdit, 256>      offsetEdits_;   // GUI → offset layer
@@ -144,6 +151,15 @@ private:
     int64_t manualGen_ = -1;
     bool    enableTraceDrain_ = true;
     bool    enableVirtualMidi_ = true;
+
+    // Internal transport: the standalone (and any host that supplies no ppq)
+    // has NO transport, so isPlaying would never be true and nothing would ever
+    // play. When the host playhead yields no position, we free-run this clock
+    // instead, gated by the `run` parameter. Hosts with real transport are
+    // entirely unaffected. (Audio-thread only.)
+    double internalPpq_      = 0.0;
+    bool   hasHostTransport_ = false;
+    double lastEndPpq_       = 0.0;   // discontinuity detection (loop/relocate)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OrreryProcessor)
 };

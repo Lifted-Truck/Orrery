@@ -10,10 +10,13 @@
 #include "gui/Snapshot.h"
 #include "gui/Theme.h"
 
-// ── Header: ORRERY wordmark · subtitle · BPM/sig/bar · HOST SYNC / TICK ──────
+// ── Header: ORRERY wordmark · subtitle · BPM/sig/bar · RUN / TICK / pill ─────
 class HeaderBar : public juce::Component {
 public:
     HeaderBar();
+    // Binds the RUN chip to the `run` parameter (internal-transport fallback —
+    // shown only when the host provides no transport, e.g. the standalone).
+    void bindRun(juce::AudioProcessorValueTreeState&);
     void update(const orrery::GuiSnapshot&);
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -21,10 +24,11 @@ public:
     std::function<void()> onTick;   // manual TICK while stopped (contract §3)
 
 private:
-    juce::TextButton tick_ { "TICK" };
+    juce::TextButton tick_ { "TICK" }, run_ { "RUN" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> runAttach_;
     double bpm_ = 120.0;
     int sigN_ = 4, sigD_ = 4, bar_ = 1;
-    bool playing_ = false;
+    bool playing_ = false, hasHost_ = false;
 };
 
 // ── Engine tabs: one per registered view; disabled = slot not yet hostable ───

@@ -66,7 +66,14 @@ build if any `juce`/`JUCE_*` token appears under `shell/core/`.
   config; **`renderBlock(buffer, midi, ts)`** is the RT-critical seam, transport-
   injected so the headless RT test drives it. Chain: clock latches → engine
   `tick` → offset generators → mini-scheduler (lap-phase → sample-accurate note
-  on/off) → MIDI out + voices. Generic editor (a real GUI is a later phase).
+  on/off) → MIDI out + voices.
+  **Transport rule:** host transport requires an actual ppq — a playhead alone
+  isn't enough. No ppq (the JUCE standalone, some bridges) → the **internal
+  free-run clock** takes over, gated by the `run` param (header RUN chip,
+  default on) at 120 BPM; otherwise the plugin could never play there.
+  **Scheduler hygiene:** pending notes are cleared (offs flushed, no stuck
+  notes) on stop and on transport discontinuities (loop wrap / relocate);
+  manual TICK evolves the pattern WITHOUT scheduling into a stalled timeline.
 - `Lockfree.h` — SPSC ring (atomics, power-of-two, POD) for GUI→audio gestures
   and audio→drain trace. No alloc/lock on the audio thread.
 - `Voices.h` — fixed-capacity fallback drum voices (per-voice seeded noise).

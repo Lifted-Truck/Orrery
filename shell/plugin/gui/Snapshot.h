@@ -32,6 +32,7 @@ struct GuiSnapshot {
     int32_t timeSigNum = 4;
     int32_t timeSigDen = 4;
     bool    isPlaying = false;
+    bool    hasHostTransport = false;   // false → internal clock (RUN chip shows)
 };
 
 // A hand edit on the offset lane, applied on the audio thread at block start.

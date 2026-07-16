@@ -13,6 +13,7 @@ OrreryEditor::OrreryEditor(OrreryProcessor& p)
 
     addAndMakeVisible(header_);
     header_.onTick = [this] { proc_.requestManualTick(); };
+    header_.bindRun(proc_.apvts());
 
     tabs_.setTabs({ { "ELASTIC",  "equilibrium", true  },
                     { "MEASURED", "measure",     false },     // organs built; slot

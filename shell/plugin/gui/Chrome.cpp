@@ -10,21 +10,36 @@ HeaderBar::HeaderBar() {
     tick_.setComponentID("chip");
     tick_.onClick = [this] { if (onTick) onTick(); };
     addAndMakeVisible(tick_);
+    run_.setComponentID("chip");
+    run_.setClickingTogglesState(true);
+    run_.setVisible(false);   // shown only on the internal clock (no host ppq)
+    addAndMakeVisible(run_);
+}
+
+void HeaderBar::bindRun(juce::AudioProcessorValueTreeState& apvts) {
+    runAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(apvts, "run", run_);
 }
 
 void HeaderBar::update(const GuiSnapshot& s) {
-    bpm_ = s.bpm; sigN_ = s.timeSigNum; sigD_ = s.timeSigDen; playing_ = s.isPlaying;
+    bpm_ = s.bpm; sigN_ = s.timeSigNum; sigD_ = s.timeSigDen;
+    playing_ = s.isPlaying; hasHost_ = s.hasHostTransport;
     const double qPerBar = 4.0 * sigN_ / std::max(1, sigD_);
     bar_ = (int)std::floor(s.ppq / std::max(1e-9, qPerBar)) + 1;
     tick_.setVisible(!playing_);
+    run_.setVisible(!hasHost_);
+    resized();   // chip positions depend on which chips are visible
     repaint();
 }
 
 void HeaderBar::resized() {
-    // Right-to-left chain: [transport text][TICK][pill]. TICK sits just left of
-    // the pill; paint() ends the text left of TICK so nothing can overlap.
+    // Right-to-left chain: [transport text][TICK][RUN][pill] — only visible
+    // chips take space; paint() ends the text left of the leftmost visible
+    // chip so nothing can overlap.
     const int pillW = 96, h = 22;
-    tick_.setBounds(getWidth() - theme::pad - pillW - 10 - 52, (getHeight() - h) / 2, 52, h);
+    const int y = (getHeight() - h) / 2;
+    int x = getWidth() - theme::pad - pillW - 10;
+    if (run_.isVisible())  { run_.setBounds(x - 48, y, 48, h);  x -= 48 + 6; }
+    if (tick_.isVisible()) { tick_.setBounds(x - 52, y, 52, h); }
 }
 
 void HeaderBar::paint(juce::Graphics& g) {
@@ -52,7 +67,9 @@ void HeaderBar::paint(juce::Graphics& g) {
     const int pillW = 96, pillH = 22;
     const auto pill = juce::Rectangle<int>(getWidth() - theme::pad - pillW,
                                            (getHeight() - pillH) / 2, pillW, pillH);
-    const int textEnd = tick_.isVisible() ? tick_.getX() - 12 : pill.getX() - 12;
+    int textEnd = pill.getX() - 12;
+    if (run_.isVisible())  textEnd = std::min(textEnd, run_.getX() - 12);
+    if (tick_.isVisible()) textEnd = std::min(textEnd, tick_.getX() - 12);
     juce::String t = juce::String(bpm_, 1) + " BPM · " + juce::String(sigN_) + "/" + juce::String(sigD_)
                    + " · bar " + juce::String(bar_);
     g.setFont(theme::mono(11.0f));
@@ -65,7 +82,7 @@ void HeaderBar::paint(juce::Graphics& g) {
         g.setColour(theme::cyan);
         g.fillEllipse((float)pill.getX() + 9, pill.getCentreY() - 3.0f, 6, 6);
         g.setFont(theme::label(10.0f));
-        g.drawText("HOST SYNC", pill.withTrimmedLeft(20), juce::Justification::centred);
+        g.drawText(hasHost_ ? "HOST SYNC" : "RUNNING", pill.withTrimmedLeft(20), juce::Justification::centred);
     } else {
         g.setColour(theme::dim);
         g.setFont(theme::label(10.0f));
