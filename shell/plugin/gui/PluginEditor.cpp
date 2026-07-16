@@ -37,6 +37,12 @@ OrreryEditor::OrreryEditor(OrreryProcessor& p)
             { "quantizeOut", "quantize",    "",    2 },
             { "gateMs",      "gate",        "ms", -1 },
             { "gain",        "gain",        "",    2 },
+            // Onboard voice (monitoring synth) — a labelled section.
+            { "",            "VOICE",       "",    0 },
+            { "voiceTune",     "tune",      "st", -1 },
+            { "voiceDecay",    "decay",     "ms", -1 },
+            { "voiceTransient","transient", "",    2 },
+            { "voiceDrop",     "drop",      "st",  1 },
         });
     addAndMakeVisible(*rail_);
 
@@ -50,8 +56,8 @@ OrreryEditor::OrreryEditor(OrreryProcessor& p)
     addAndMakeVisible(*routing_);
 
     setResizable(true, true);
-    setResizeLimits(880, 560, 1600, 1100);
-    setSize(980, 640);
+    setResizeLimits(900, 660, 1600, 1100);
+    setSize(980, 720);   // rail fits the engine + VOICE sections without clipping
     startTimerHz(30);
 }
 

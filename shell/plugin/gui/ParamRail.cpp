@@ -4,7 +4,12 @@
 using namespace orrery;
 
 namespace {
-constexpr int kRowH = 30, kDivH = 16, kTitleH = 26;
+constexpr int kRowH = 26, kDivH = 13, kTitleH = 24, kSecH = 24;
+// A spec row with empty paramId is a divider; empty paramId + a label is a
+// section header (e.g. "VOICE").
+bool isHeader(const juce::String& id, const juce::String& label) {
+    return id.isEmpty() && label.isNotEmpty();
+}
 }
 
 ParamRail::ParamRail(juce::AudioProcessorValueTreeState& apvts,
@@ -48,7 +53,7 @@ void ParamRail::refreshValue(Bound& b) {
 void ParamRail::resized() {
     int y = theme::pad + kTitleH;
     for (auto& b : rows_) {
-        if (!b.slider) { y += kDivH; continue; }
+        if (!b.slider) { y += isHeader(b.row.paramId, b.row.label) ? kSecH : kDivH; continue; }
         const int w = getWidth() - theme::pad * 2;
         b.slider->setBounds(theme::pad + 78, y + 3, w - 78 - 48, kRowH - 6);
         b.value->setBounds(getWidth() - theme::pad - 46, y, 46, kRowH);
@@ -70,11 +75,22 @@ void ParamRail::paint(juce::Graphics& g) {
     int y = theme::pad + kTitleH;
     for (auto& b : rows_) {
         if (!b.slider) {
-            g.setColour(theme::line);
-            g.fillRect(theme::pad, y + kDivH / 2, getWidth() - theme::pad * 2, 1);
-            y += kDivH;
+            if (isHeader(b.row.paramId, b.row.label)) {
+                g.setColour(theme::line);
+                g.fillRect(theme::pad, y + 3, getWidth() - theme::pad * 2, 1);
+                g.setFont(theme::label(10.0f));
+                g.setColour(theme::amber);
+                g.drawText(b.row.label, theme::pad, y + 6, getWidth() - theme::pad * 2, 16,
+                           juce::Justification::centredLeft);
+                y += kSecH;
+            } else {
+                g.setColour(theme::line);
+                g.fillRect(theme::pad, y + kDivH / 2, getWidth() - theme::pad * 2, 1);
+                y += kDivH;
+            }
             continue;
         }
+        g.setFont(theme::sans(11.0f));
         g.setColour(theme::dim);
         g.drawText(b.row.label, theme::pad, y, 76, kRowH, juce::Justification::centredLeft);
         y += kRowH;

@@ -133,6 +133,10 @@ private:
         std::atomic<float>* relax = nullptr;
         std::atomic<float>* internalAudio = nullptr;  // gate the fallback voices
         std::atomic<float>* run = nullptr;            // internal transport (no-host fallback)
+        std::atomic<float>* voiceTune = nullptr;
+        std::atomic<float>* voiceDecay = nullptr;
+        std::atomic<float>* voiceTransient = nullptr;
+        std::atomic<float>* voiceDrop = nullptr;
     } p_;
     orrery::SpscRing<orrery::GestureEvent, 256>    gestureRing_;
     orrery::SpscRing<orrery::OffsetEdit, 256>      offsetEdits_;   // GUI → offset layer

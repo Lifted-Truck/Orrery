@@ -6,8 +6,11 @@
 namespace orrery {
 
 MidiRouter::MidiRouter() {
-    // Default note map: stacked chromatic spread from C2, as in the prototypes.
-    for (int i = 0; i < kMaxSources; ++i) noteMap_[i] = 36 + i;
+    // Default note map (spec §4): 36 + 3·(id mod 5) — a minor-third spread from
+    // C2 cycling every 5 sources, matching the prototype's pitched voice. More
+    // musical than a chromatic cluster, and it drives external instruments the
+    // same way it sounds onboard.
+    for (int i = 0; i < kMaxSources; ++i) noteMap_[i] = 36 + 3 * (i % 5);
 }
 
 void MidiRouter::setNoteMapEntry(int32_t sourceId, int note) {

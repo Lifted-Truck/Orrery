@@ -66,7 +66,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
         std::make_unique<BoolParam>(P{"internalAudio", 1}, "Internal Audio", true),
         // Internal transport (used ONLY when the host provides no ppq — the
         // standalone). Default on so the standalone plays out of the box.
-        std::make_unique<BoolParam>(P{"run", 1}, "Run", true));
+        std::make_unique<BoolParam>(P{"run", 1}, "Run", true),
+        // Onboard voice controls (VOICE rail section). tune is voice-only
+        // monitoring pitch (default +12 = an octave up); MIDI-out is unchanged.
+        std::make_unique<IntParam>(P{"voiceTune", 1}, "Tune", -24, 24, 12),
+        std::make_unique<FloatParam>(P{"voiceDecay", 1}, "Decay",
+            juce::NormalisableRange<float>(40.0f, 600.0f, 1.0f), 220.0f,
+            juce::AudioParameterFloatAttributes().withLabel("ms")),
+        std::make_unique<FloatParam>(P{"voiceTransient", 1}, "Transient",
+            juce::NormalisableRange<float>(0.0f, 1.0f), 0.45f),
+        std::make_unique<FloatParam>(P{"voiceDrop", 1}, "Drop",
+            juce::NormalisableRange<float>(0.0f, 24.0f, 0.1f), 14.0f,
+            juce::AudioParameterFloatAttributes().withLabel("st")));
     return layout;
 }
 
@@ -90,6 +101,10 @@ OrreryProcessor::OrreryProcessor()
     p_.relax       = apvts_.getRawParameterValue("relax");
     p_.internalAudio = apvts_.getRawParameterValue("internalAudio");
     p_.run           = apvts_.getRawParameterValue("run");
+    p_.voiceTune      = apvts_.getRawParameterValue("voiceTune");
+    p_.voiceDecay     = apvts_.getRawParameterValue("voiceDecay");
+    p_.voiceTransient = apvts_.getRawParameterValue("voiceTransient");
+    p_.voiceDrop      = apvts_.getRawParameterValue("voiceDrop");
 }
 
 OrreryProcessor::~OrreryProcessor() {
@@ -159,6 +174,13 @@ void OrreryProcessor::applyParams() {
     engine_.setLattice(*p_.lattice);
     engine_.setDamping(*p_.damping);
     engine_.setRelax(*p_.relax);
+
+    // Onboard voice controls.
+    voices_.setParams(VoiceParams{
+        static_cast<int>(*p_.voiceTune),
+        *p_.voiceDecay / 1000.0f,
+        *p_.voiceTransient,
+        *p_.voiceDrop});
 
     // "sources" param → Add/Remove gestures (bounded ≤32 iterations, no alloc).
     const int target = juce::jlimit(1, kMaxSources, static_cast<int>(*p_.sources));
