@@ -128,6 +128,7 @@ OrreryProcessor::OrreryProcessor()
     p_.voiceTransient = apvts_.getRawParameterValue("voiceTransient");
     p_.voiceDrop      = apvts_.getRawParameterValue("voiceDrop");
     p_.engineSelect   = apvts_.getRawParameterValue("engine");
+    engineParam_ = dynamic_cast<juce::AudioParameterChoice*>(apvts_.getParameter("engine"));
 }
 
 OrreryProcessor::~OrreryProcessor() {
@@ -191,8 +192,11 @@ void OrreryProcessor::applyParams() {
     a.accents = static_cast<int>(*p_.accentCount);
     a.amount = 24;
 
-    // Active engine selection + its parameter subset.
-    slot_.select(static_cast<EngineKind>(static_cast<int>(*p_.engineSelect)));
+    // Active engine selection + its parameter subset. Read the choice by INDEX
+    // (unambiguous — no normalized/denormalized guessing).
+    const int sel = engineParam_ ? engineParam_->getIndex()
+                                  : static_cast<int>(*p_.engineSelect);
+    slot_.select(static_cast<EngineKind>(sel));
     slot_.applyParams(apvts_);
 
     // Onboard voice controls.
@@ -289,6 +293,13 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 
     applyParams();
     gateQuarters_ = (*p_.gateMs / 1000.0) * (ts.bpm / 60.0);
+
+    // Engine just switched → flush the previous engine's queued notes (offs
+    // included) so it doesn't keep sounding for the rest of the bar.
+    if (static_cast<int>(slot_.kind()) != prevEngine_) {
+        clearPending(midi);
+        prevEngine_ = static_cast<int>(slot_.kind());
+    }
 
     // GUI/test gestures (SPSC, drained at block start).
     GestureEvent g;
@@ -390,9 +401,16 @@ void OrreryProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     }
     if (!hostTransport) {
         // Internal free-run clock, gated by the `run` param (header RUN chip).
-        ts.isPlaying = p_.run->load(std::memory_order_relaxed) > 0.5f;
+        const bool run = p_.run->load(std::memory_order_relaxed) > 0.5f;
+        // Rising edge (hit RUN): start at the DOWNBEAT so a latch fires this
+        // block and audio begins immediately — otherwise the next latch (and
+        // thus the first note) waits until ppq crosses the next bar boundary,
+        // which reads as "runs a few ticks before any sound".
+        if (run && !internalRunning_) { internalPpq_ = 0.0; lastEndPpq_ = 0.0; }
+        internalRunning_ = run;
+        ts.isPlaying = run;
         ts.ppqAtBlockStart = internalPpq_;
-        if (ts.isPlaying)
+        if (run)
             internalPpq_ += static_cast<double>(ts.blockSize) / clockmath::samplesPerQuarter(ts);
     }
     hasHostTransport_ = hostTransport;

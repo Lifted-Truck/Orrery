@@ -163,8 +163,11 @@ private:
     // instead, gated by the `run` parameter. Hosts with real transport are
     // entirely unaffected. (Audio-thread only.)
     double internalPpq_      = 0.0;
+    bool   internalRunning_  = false; // rising-edge detect for the RUN chip
     bool   hasHostTransport_ = false;
     double lastEndPpq_       = 0.0;   // discontinuity detection (loop/relocate)
+    int    prevEngine_       = -1;    // engine-change detect → flush stale notes
+    juce::AudioParameterChoice* engineParam_ = nullptr;  // read by index
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OrreryProcessor)
 };

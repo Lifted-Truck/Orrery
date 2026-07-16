@@ -86,7 +86,8 @@ OrreryEditor::OrreryEditor(OrreryProcessor& p)
     addAndMakeVisible(*routing_);
 
     // Build the view + rail for whatever engine is currently selected.
-    engine_ = (int)proc_.apvts().getRawParameterValue("engine")->load();
+    if (auto* cp = dynamic_cast<juce::AudioParameterChoice*>(proc_.apvts().getParameter("engine")))
+        engine_ = cp->getIndex();
     tabs_.selected = engine_;
     setEngine(engine_);
 
@@ -100,9 +101,10 @@ OrreryEditor::~OrreryEditor() { setLookAndFeel(nullptr); }
 
 void OrreryEditor::setEngine(int index) {
     engine_ = index;
-    // Tell the processor (choice param, normalized 0..1 over the 3 choices).
-    if (auto* param = proc_.apvts().getParameter("engine"))
-        param->setValueNotifyingHost(index / 2.0f);
+    // Tell the processor by INDEX (AudioParameterChoice::operator= notifies the
+    // host; no normalized-value guessing).
+    if (auto* cp = dynamic_cast<juce::AudioParameterChoice*>(proc_.apvts().getParameter("engine")))
+        *cp = index;
 
     if (view_) removeChildComponent(view_.get());
     switch (index) {
