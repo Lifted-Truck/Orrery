@@ -139,7 +139,9 @@ private:
         std::atomic<float>* voiceDrop = nullptr;
         std::atomic<float>* engineSelect = nullptr;
     } p_;
-    orrery::SpscRing<orrery::GestureEvent, 256>    gestureRing_;
+    // 1024: curve painting streams one CurveEdit per touched bin — a fast swipe
+    // across the 512-bin measure must not overflow the ring mid-gesture.
+    orrery::SpscRing<orrery::GestureEvent, 1024>   gestureRing_;
     orrery::SpscRing<orrery::OffsetEdit, 256>      offsetEdits_;   // GUI → offset layer
     orrery::SpscRing<orrery::TraceRecordPod, 256>  traceRing_;
     orrery::SpscRing<orrery::MidiOutEvent, 512>    midiOutRing_;   // audio → virtual port

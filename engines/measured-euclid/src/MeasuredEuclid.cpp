@@ -136,11 +136,19 @@ void MeasuredEuclid::handleGesture(const GestureEvent& g) {
     switch (g.type) {
         case GestureEvent::Type::Add:    setK(k_ + 1); break;
         case GestureEvent::Type::Remove: if (k_ > 1) setK(k_ - 1); break;   // LIFO on μ-index
-        case GestureEvent::Type::CurveEdit: {
-            const int idx = clampi(static_cast<int>(std::lround(g.value)), 0, 5);
-            loadPreset(wDrawn_, static_cast<Preset>(idx));
+        case GestureEvent::Type::CurveEdit:
+            // sourceId >= 0 → PAINT: set wDrawn_[bin] = value (the spec's
+            // hand-drawn curve; pointer paint sends one gesture per bin).
+            // sourceId < 0 → load preset (value = preset index). Both hit the
+            // DRAWN buffer only — latched to sounding at the next bar (§2.4).
+            if (g.sourceId >= 0) {
+                const int bin = clampi(g.sourceId, 0, kM - 1);
+                wDrawn_[bin] = clampd(static_cast<double>(g.value), 0.0, 1.0);
+            } else {
+                const int idx = clampi(static_cast<int>(std::lround(g.value)), 0, 5);
+                loadPreset(wDrawn_, static_cast<Preset>(idx));
+            }
             break;
-        }
         case GestureEvent::Type::Drag:   phase_ = wrap(static_cast<double>(g.value)); break;
         case GestureEvent::Type::Kick:   break;
     }

@@ -54,6 +54,16 @@ void ProbableView::paint(juce::Graphics& g) {
         }
     }
 
+    // Playhead sweep (the scrubber).
+    if (snap_.isPlaying) {
+        const double qPerBar = 4.0 * snap_.timeSigNum / std::max(1, snap_.timeSigDen);
+        const double ph = std::fmod(std::fmod(snap_.ppq / qPerBar, 1.0) + 1.0, 1.0);
+        const float a = ang(ph);
+        g.setColour(theme::cyan.withAlpha(0.55f));
+        g.drawLine(cx + std::cos(a) * (R * 0.16f), cy + std::sin(a) * (R * 0.16f),
+                   cx + std::cos(a) * (R + barMax + 6), cy + std::sin(a) * (R + barMax + 6), 1.4f);
+    }
+
     // Center + readout: expected vs realized count, entropy-free honest numbers.
     int realized = 0;
     for (int i = 0; i < n; ++i) realized += snap_.realized[i] ? 1 : 0;

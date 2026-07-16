@@ -45,7 +45,10 @@ static void run() {
         for (const auto& ev : e.latchedEvents()) before.push_back(ev.barPhase);
 
         e.setK(3); e.setQuantize(1.0);
-        e.handleGesture({GestureEvent::Type::CurveEdit, 0, 2.0f});   // RampDown
+        // Preset load = CurveEdit with sourceId -1 (sourceId >= 0 now means
+        // PAINT bin — the spec's hand-drawn curve). Same invariant tested:
+        // mid-bar edits must not recompute onsets until the next tick.
+        e.handleGesture({GestureEvent::Type::CurveEdit, -1, 2.0f});   // RampDown
         // No tick → latched set is unchanged.
         CHECK_EQ((int)e.latchedEvents().size(), (int)before.size());
         bool unchanged = true;

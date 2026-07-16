@@ -68,7 +68,8 @@ void EngineSlot::fillSnapshot(GuiSnapshot& s) const {
                 s.energy[i] = measured_.onsetEnergy(i);
                 s.realized[i] = 1;
             }
-            measured_.fillCurve(s.curve, 64);
+            measured_.fillCurve(s.curve, 64, false);
+            measured_.fillCurve(s.curveDrawn, 64, true);
             break;
         }
         case EngineKind::Probable: {

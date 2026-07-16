@@ -52,14 +52,16 @@ public:
     float  onsetEnergy(int i) const { return latched_[i].energy; }
     int    gridN() const { return n_; }
     int64_t generation() const { return generation_; }
-    // Downsample the active measure into out[count] (normalized to its own max)
-    // for the GUI density lane. Off the audio path.
-    void fillCurve(float* out, int count) const {
+    // Downsample a measure into out[count] (normalized to its own max) for the
+    // GUI density lane. Off the audio path. drawn=false → the SOUNDING curve;
+    // drawn=true → the edit target (pending until the next bar latch).
+    void fillCurve(float* out, int count, bool drawn = false) const {
+        const double* w = drawn ? wDrawn_ : wActive_;
         double mx = kWMin;
-        for (int i = 0; i < kM; ++i) mx = std::max(mx, wActive_[i]);
+        for (int i = 0; i < kM; ++i) mx = std::max(mx, w[i]);
         for (int j = 0; j < count; ++j) {
             const int src = j * kM / count;
-            out[j] = static_cast<float>(wActive_[src] / mx);
+            out[j] = static_cast<float>(w[src] / mx);
         }
     }
     // Forward CDF U(t) of the ACTIVE (latched) measure — exposed so the inverse-

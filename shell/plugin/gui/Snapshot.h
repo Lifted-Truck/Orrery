@@ -30,7 +30,8 @@ struct GuiSnapshot {
     double  omega[kMaxSources] = {};      // per-source aux (Elastic velocity → whiskers)
     float   energy[kMaxSources] = {};     // per-source energy [0,1]
     uint8_t realized[kMaxSources] = {};   // 1 = this source sounded this bar
-    float   curve[64] = {};               // Measured: downsampled active measure
+    float   curve[64] = {};               // Measured: downsampled SOUNDING measure
+    float   curveDrawn[64] = {};          // Measured: edit target (pending overlay)
     int64_t gen = 0;                      // generation counter
 
     // Offset layer (the pins-and-flow lane).
