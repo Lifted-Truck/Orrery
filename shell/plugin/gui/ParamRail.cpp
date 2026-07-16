@@ -23,15 +23,19 @@ ParamRail::ParamRail(juce::AudioProcessorValueTreeState& apvts,
             b.value->setInterceptsMouseClicks(false, false);
             b.attach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
                 apvts, r.paramId, *b.slider);
-            auto* raw = &b;
-            b.slider->onValueChange = [this, raw] { refreshValue(*raw); };
             addAndMakeVisible(*b.slider);
             addAndMakeVisible(*b.value);
         }
         rows_.push_back(std::move(b));
     }
-    for (auto& b : rows_)
-        if (b.slider) refreshValue(b);
+    // Wire callbacks AFTER rows_ is fully built, capturing the INDEX — a
+    // pointer to the loop-local Bound (or into a still-growing vector) dangles
+    // once moved/reallocated, and the first slider touch dereferences it.
+    for (size_t i = 0; i < rows_.size(); ++i) {
+        if (!rows_[i].slider) continue;
+        rows_[i].slider->onValueChange = [this, i] { refreshValue(rows_[i]); };
+        refreshValue(rows_[i]);
+    }
 }
 
 void ParamRail::refreshValue(Bound& b) {
