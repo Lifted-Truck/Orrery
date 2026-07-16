@@ -104,10 +104,17 @@ The visual system mirrors the engine seam. Rules that keep it mess-free:
   wait-free `TripleBuffer` (published per block); GUI→audio = `GestureEvent` +
   `OffsetEdit` SPSC rings. The GUI NEVER touches engine/offset state directly.
 - Chrome (engine-agnostic): `Chrome.{h,cpp}` (HeaderBar w/ transport chip +
-  manual TICK, EngineTabs, RoutingBar), `ParamRail` (APVTS-attached rows from a
-  row spec), `OffsetLane` (drag-to-pin cells, locks, generator chips),
-  `PluginEditor` (assembly only). Currently hosts the Elastic view; Measured/
-  Probable tabs are disabled until multi-engine slot hosting lands.
+  manual TICK + RUN, EngineTabs, RoutingBar), `ParamRail` (APVTS rows from a
+  spec, with section headers), `OffsetLane` (drag-to-pin cells, locks, chips),
+  `PluginEditor` (assembly + engine swap).
+- **`EngineSlot.{h,cpp}`** hosts all three engines behind one façade (the
+  multi-engine slot, DECISIONS #17). The shell is ALLOWED to know the concrete
+  engine set (it instantiates them); per-engine branching (param apply,
+  snapshot fill, sourceCount) is localized here, not scattered through the
+  processor. The `engine` choice param selects the active one; each keeps its
+  own state. Adding an engine = a case here + a view + rail rows in
+  `PluginEditor`; the processor is untouched. Shared-for-now (refinements):
+  offset layer + router + note-map are one instance across engines.
 
 Build/validate (machine-local, human-run — global CLAUDE.md gotchas): the
 codesign re-seal is a CMake `POST_BUILD` (JUCE regenerates `moduleinfo.json`

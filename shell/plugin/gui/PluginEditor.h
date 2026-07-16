@@ -28,6 +28,7 @@ public:
 
 private:
     void timerCallback() override;
+    void setEngine(int index);   // swap the active view + param rail
 
     OrreryProcessor& proc_;
     OrreryLookAndFeel lnf_;
@@ -38,5 +39,6 @@ private:
     std::unique_ptr<ParamRail>   rail_;
     std::unique_ptr<OffsetLane>  lane_;
     std::unique_ptr<RoutingBar>  routing_;
+    int engine_ = 0;
     juce::TooltipWindow tooltips_ { this };
 };

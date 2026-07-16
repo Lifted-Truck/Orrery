@@ -182,6 +182,29 @@ history; supersede with a new numbered entry.
     compacting sourceId to onset-rank (breaks "step 7 is always +5", spec §2.5);
     unilaterally bumping kMaxSources (frozen contract, affects every engine).
 
+17. **Multi-engine slot: all three engines playable + visible via one slot
+    façade** (2026-07-13, human — "add the next engine"). The plugin now hosts
+    Elastic / Measured / Probable through `shell/plugin/EngineSlot` — a shell-
+    side façade holding all three concrete engines, an `engine` choice param
+    selecting the active one, and the per-engine branching for parameter
+    application + snapshot fill localized in ONE place (rather than scattered
+    through the processor). Only the shell knows the concrete set (it
+    instantiates them); engines stay mutually independent — IEngine is for THEIR
+    isolation, not the reverse, so the shell branching is not a contract
+    violation and NO contract change was needed (sourceCount stayed off the
+    frozen interface). Each engine keeps its own state so switching preserves
+    work; state saves all three chunks + selection. GuiSnapshot generalized
+    (kind + per-source phase/aux/energy/realized + a 64-pt curve for Measured);
+    each engine gets its own `IEngineView` in its territory (MeasuredView =
+    density+onset lanes, ProbableView = radial probability field). The tabs now
+    switch the live engine + swap view + rebuild the param rail. Simplifications
+    (noted, refinements later): the offset layer + router + note-map are shell-
+    SHARED across engines (switching reinterprets the 32 offset cells); per-
+    engine offset state is deferred. Gates: RT no-alloc green (0/4000); 14/14
+    core+engine ctests; seals VALID; auval SUCCEEDED. Rejected: adding
+    `sourceCount()` to the frozen IEngine (unnecessary — the shell owns the
+    concrete set); one shared engine mutated in place (loses per-engine state).
+
     Both engines land as ORGANS (own territory + acceptance-test verify gate,
     merged via the contract) — the rung-3 model in practice. The plugin slot
     stays Elastic; per-engine param routing + engine selection in the shell is

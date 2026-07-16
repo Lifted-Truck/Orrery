@@ -8,15 +8,17 @@
 ## Re-prioritization (2026-07-13, human)
 Two items jumped up ahead of further engines — establish structure before it
 sprawls:
-- **O-GUI — Modular visual system.** 🟡 **Vertical slice DONE 2026-07-13**
-  (DECISIONS #16): mockup approved → `shell/plugin/gui/` (Theme tokens,
-  LookAndFeel, `IEngineView` seam, `GuiSnapshot` triple-buffer, `OffsetEdit`
-  ring, chrome: header/tabs/param-rail/offset-lane/routing) + the first
-  engine-owned view `engines/elastic-euclid/gui/ElasticView` (ring, E(k,n)
-  ghosts, whiskers, playhead, click-to-kick). Replaces the generic editor.
-  RT no-alloc green; auval SUCCEEDED. *Remaining: Measured + Probable views
-  (blocked on multi-engine slot hosting), lattice-pull-scaled ticks, per-cell
-  drag polish, resize persistence.*
+- **O-GUI — Modular visual system.** ✅ **DONE 2026-07-13** (DECISIONS #16, #17):
+  mockup approved → `shell/plugin/gui/` (Theme tokens, LookAndFeel,
+  `IEngineView` seam, `GuiSnapshot` triple-buffer, `OffsetEdit` ring, chrome) +
+  all three engine-owned views (Elastic ring, Measured density+onset lanes,
+  Probable radial field). **Multi-engine slot (`EngineSlot`) — all three
+  engines now playable + visible**, tabs switch the live engine + swap view +
+  param rail. Voices are the prototype's pitched percussion with a VOICE
+  control section; internal transport lets the standalone free-run. RT no-alloc
+  green; auval SUCCEEDED. *Remaining polish: per-engine offset state (currently
+  shared), bool engine params in the rail (breathe/freeze), lattice-pull-scaled
+  ticks, resize persistence, note-map editor.*
 - **O-sync — Tempo/transport tightening.** Host-clock generation already follows
   Ableton (bpm/ppq/time-sig/isPlaying → bar-grid latches). Remaining: timestamp
   the CoreMIDI virtual-port sends so Ableton-routed notes land beat-tight (not

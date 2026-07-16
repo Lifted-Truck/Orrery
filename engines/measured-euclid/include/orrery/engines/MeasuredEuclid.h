@@ -11,6 +11,7 @@
 // curve manipulation; changes meaning only when k changes (§2.3).
 #pragma once
 
+#include <algorithm>
 #include <span>
 
 #include "orrery/Contract.h"
@@ -48,7 +49,19 @@ public:
 
     // ── Introspection (tests / GUI) ──────────────────────────────────────────
     double onsetPhase(int i) const { return latched_[i].barPhase; }
+    float  onsetEnergy(int i) const { return latched_[i].energy; }
+    int    gridN() const { return n_; }
     int64_t generation() const { return generation_; }
+    // Downsample the active measure into out[count] (normalized to its own max)
+    // for the GUI density lane. Off the audio path.
+    void fillCurve(float* out, int count) const {
+        double mx = kWMin;
+        for (int i = 0; i < kM; ++i) mx = std::max(mx, wActive_[i]);
+        for (int j = 0; j < count; ++j) {
+            const int src = j * kM / count;
+            out[j] = static_cast<float>(wActive_[src] / mx);
+        }
+    }
     // Forward CDF U(t) of the ACTIVE (latched) measure — exposed so the inverse-
     // accuracy test can check U(invU(u)) ≈ u.
     double forwardU(double t) const;

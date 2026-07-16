@@ -16,8 +16,8 @@
 #include "orrery/MidiRouter.h"
 #include "orrery/OffsetLayer.h"
 #include "orrery/Types.h"
-#include "orrery/engines/ElasticEuclid.h"
 
+#include "EngineSlot.h"
 #include "Lockfree.h"
 #include "MidiOut.h"
 #include "Voices.h"
@@ -99,7 +99,7 @@ private:
     void clearPending(juce::MidiBuffer&);
 
     // ── Core (framework-free) ────────────────────────────────────────────────
-    orrery::ElasticEuclid engine_;   // O2: the equilibrium-rhythm engine
+    orrery::EngineSlot  slot_;       // hosts Elastic / Measured / Probable
     orrery::OffsetLayer offset_;
     orrery::MidiRouter  router_;
     orrery::ClockConfig clockCfg_;
@@ -137,6 +137,7 @@ private:
         std::atomic<float>* voiceDecay = nullptr;
         std::atomic<float>* voiceTransient = nullptr;
         std::atomic<float>* voiceDrop = nullptr;
+        std::atomic<float>* engineSelect = nullptr;
     } p_;
     orrery::SpscRing<orrery::GestureEvent, 256>    gestureRing_;
     orrery::SpscRing<orrery::OffsetEdit, 256>      offsetEdits_;   // GUI → offset layer

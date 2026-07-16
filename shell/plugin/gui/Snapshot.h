@@ -14,13 +14,23 @@
 
 namespace orrery {
 
+enum class EngineKind : int32_t { Elastic = 0, Measured = 1, Probable = 2 };
+
 struct GuiSnapshot {
-    // Engine view data (Elastic: particle phases/velocities; other engines map
-    // their own state onto phase/energy-per-source).
-    int32_t k = 0;                        // live sources
+    // Engine view data, generalized across engines. `theta`/`omega` are the
+    // generic per-source phase + aux (Elastic: θ + ω for whiskers; Measured:
+    // onset phase + 0; Probable: step/n + 0). `energy` is the per-source [0,1]
+    // intensity every engine provides. `realized` marks which sources actually
+    // sounded this bar (Probable's Bernoulli subset; all-1 for Elastic/
+    // Measured). `curve` is Measured's downsampled density lane.
+    EngineKind kind = EngineKind::Elastic;
+    int32_t k = 0;                        // addressable sources (Probable: n grid steps)
     int32_t n = 16;                       // lattice/grid divisions
     double  theta[kMaxSources] = {};      // per-source phase [0,1)
-    double  omega[kMaxSources] = {};      // per-source velocity (whiskers)
+    double  omega[kMaxSources] = {};      // per-source aux (Elastic velocity → whiskers)
+    float   energy[kMaxSources] = {};     // per-source energy [0,1]
+    uint8_t realized[kMaxSources] = {};   // 1 = this source sounded this bar
+    float   curve[64] = {};               // Measured: downsampled active measure
     int64_t gen = 0;                      // generation counter
 
     // Offset layer (the pins-and-flow lane).

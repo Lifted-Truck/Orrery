@@ -21,6 +21,7 @@ juce_add_plugin(Orrery
 
 target_sources(Orrery PRIVATE
     PluginProcessor.cpp
+    EngineSlot.cpp
     TraceDrain.cpp
     MidiOut.cpp
     gui/OrreryLookAndFeel.cpp
@@ -31,7 +32,9 @@ target_sources(Orrery PRIVATE
     # Engine views live in their engine's territory (engines/<name>/gui/ — the
     # organ owns its visualization); the plugin target is where they COMPILE,
     # since only this target has JUCE. Add one line per engine view.
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../engines/elastic-euclid/gui/ElasticView.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../engines/elastic-euclid/gui/ElasticView.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../engines/measured-euclid/gui/MeasuredView.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../engines/probable-euclid/gui/ProbableView.cpp)
 
 target_compile_definitions(Orrery PRIVATE
     ORRERY_WITH_EDITOR=1
@@ -46,6 +49,8 @@ target_include_directories(Orrery PRIVATE
 target_link_libraries(Orrery
     PRIVATE
         orrery_elastic
+        orrery_measured
+        orrery_probable
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
@@ -72,6 +77,7 @@ juce_add_console_app(orrery_rt_test PRODUCT_NAME orrery_rt_test)
 target_sources(orrery_rt_test PRIVATE
     tests/test_rt_noalloc.cpp
     PluginProcessor.cpp
+    EngineSlot.cpp
     TraceDrain.cpp
     MidiOut.cpp)
 target_compile_definitions(orrery_rt_test PRIVATE
@@ -81,6 +87,8 @@ target_include_directories(orrery_rt_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(orrery_rt_test
     PRIVATE
         orrery_elastic
+        orrery_measured
+        orrery_probable
         juce::juce_audio_utils
         juce::juce_recommended_config_flags)
 add_test(NAME test_rt_noalloc COMMAND orrery_rt_test)

@@ -37,6 +37,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
     using ChoiceParam = juce::AudioParameterChoice;
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     layout.add(
+        std::make_unique<ChoiceParam>(P{"engine", 1}, "Engine",
+            juce::StringArray{ "Elastic", "Measured", "Probable" }, 0),
         std::make_unique<FloatParam>(P{"gain", 1}, "Gain",
             juce::NormalisableRange<float>(0.0f, 1.0f), 0.8f),
         std::make_unique<IntParam>(P{"sources", 1}, "Sources", 1, 16, 8),
@@ -61,6 +63,26 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
         std::make_unique<FloatParam>(P{"relax", 1}, "Relax",
             juce::NormalisableRange<float>(0.01f, 0.6f), 0.08f,
             juce::AudioParameterFloatAttributes().withLabel("s")),
+        // Measured Euclid engine (spec §3).
+        std::make_unique<IntParam>(P{"m_k", 1}, "M Onsets", 1, 32, 7),
+        std::make_unique<IntParam>(P{"m_n", 1}, "M Grid", 1, 64, 16),
+        std::make_unique<FloatParam>(P{"m_phase", 1}, "M Phase",
+            juce::NormalisableRange<float>(0.0f, 1.0f), 0.0f),
+        std::make_unique<FloatParam>(P{"m_quantize", 1}, "M Quantize",
+            juce::NormalisableRange<float>(0.0f, 1.0f), 0.0f),
+        std::make_unique<BoolParam>(P{"m_breathe", 1}, "M Breathe", false),
+        std::make_unique<IntParam>(P{"m_breathePeriod", 1}, "M Breathe Period", 2, 64, 8),
+        // Probable Euclid engine (spec §3; n capped at 32, DECISIONS #14).
+        std::make_unique<IntParam>(P{"p_n", 1}, "P Grid", 4, 32, 16),
+        std::make_unique<FloatParam>(P{"p_density", 1}, "P Density",
+            juce::NormalisableRange<float>(0.0f, 32.0f, 0.1f), 5.0f),
+        std::make_unique<FloatParam>(P{"p_temperature", 1}, "P Temperature",
+            juce::NormalisableRange<float>(0.0f, 1.0f), 0.2f),
+        std::make_unique<FloatParam>(P{"p_clump", 1}, "P Clump",
+            juce::NormalisableRange<float>(0.0f, 1.0f), 0.0f),
+        std::make_unique<FloatParam>(P{"p_anchor", 1}, "P Anchor",
+            juce::NormalisableRange<float>(0.0f, 1.0f), 0.0f),
+        std::make_unique<BoolParam>(P{"p_freeze", 1}, "P Freeze", false),
         // Internal audio on/off: off → Orrery is a silent MIDI generator
         // (drive other tracks); on → it also sounds via the fallback voices.
         std::make_unique<BoolParam>(P{"internalAudio", 1}, "Internal Audio", true),
@@ -105,6 +127,7 @@ OrreryProcessor::OrreryProcessor()
     p_.voiceDecay     = apvts_.getRawParameterValue("voiceDecay");
     p_.voiceTransient = apvts_.getRawParameterValue("voiceTransient");
     p_.voiceDrop      = apvts_.getRawParameterValue("voiceDrop");
+    p_.engineSelect   = apvts_.getRawParameterValue("engine");
 }
 
 OrreryProcessor::~OrreryProcessor() {
@@ -118,7 +141,7 @@ void OrreryProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/) 
     sampleRate_ = sampleRate;
     slotRng_.seed(projectSeed_, 0);
     offset_.seed(projectSeed_, 0xFFFF);
-    engine_.seed(projectSeed_, 1);   // slot 0's engine randomness stream
+    slot_.seed(projectSeed_);        // seeds all three engines (streams 1/2/3)
     voices_.prepare(sampleRate);
     pendingCount_ = 0;
     lastK_ = -1;
@@ -168,12 +191,9 @@ void OrreryProcessor::applyParams() {
     a.accents = static_cast<int>(*p_.accentCount);
     a.amount = 24;
 
-    // Elastic Euclid engine parameters (spec §4).
-    engine_.setN(static_cast<int>(*p_.wells));
-    engine_.setRepulsion(*p_.repulsion);
-    engine_.setLattice(*p_.lattice);
-    engine_.setDamping(*p_.damping);
-    engine_.setRelax(*p_.relax);
+    // Active engine selection + its parameter subset.
+    slot_.select(static_cast<EngineKind>(static_cast<int>(*p_.engineSelect)));
+    slot_.applyParams(apvts_);
 
     // Onboard voice controls.
     voices_.setParams(VoiceParams{
@@ -181,28 +201,22 @@ void OrreryProcessor::applyParams() {
         *p_.voiceDecay / 1000.0f,
         *p_.voiceTransient,
         *p_.voiceDrop});
-
-    // "sources" param → Add/Remove gestures (bounded ≤32 iterations, no alloc).
-    const int target = juce::jlimit(1, kMaxSources, static_cast<int>(*p_.sources));
-    int cur = engine_.sourceCount();
-    while (cur < target) { engine_.handleGesture({GestureEvent::Type::Add, 0, 0.0f}); ++cur; }
-    while (cur > target) { engine_.handleGesture({GestureEvent::Type::Remove, 0, 0.0f}); --cur; }
 }
 
 void OrreryProcessor::doLatch(int64_t gen, double lapPpq, const TransportState& ts,
                               bool schedule) {
     TickContext ctx; ctx.generation = gen; ctx.clock = clockCfg_; ctx.tempoBpm = ts.bpm;
     ctx.rng = &slotRng_;
-    engine_.tick(ctx);
+    slot_.active().tick(ctx);
     genViz_.store(gen, std::memory_order_relaxed);
 
-    const int k = engine_.sourceCount();
+    const int k = slot_.sourceCount();
     int32_t present[kMaxSources];
     for (int i = 0; i < k; ++i) present[i] = i;
     offset_.runGenerators(gen, std::span<const int32_t>(present, static_cast<size_t>(k)));
 
     // Hand a POD trace record to the drain thread (no formatting here).
-    auto ev = engine_.latchedEvents();
+    auto ev = slot_.active().latchedEvents();
     TraceRecordPod pod; pod.gen = gen; pod.count = static_cast<int32_t>(ev.size());
     for (size_t i = 0; i < ev.size() && i < kMaxSources; ++i) pod.ev[i] = ev[i];
     traceRing_.push(pod);
@@ -278,7 +292,7 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 
     // GUI/test gestures (SPSC, drained at block start).
     GestureEvent g;
-    while (gestureRing_.pop(g)) engine_.handleGesture(g);
+    while (gestureRing_.pop(g)) slot_.active().handleGesture(g);
 
     // Offset-cell hand edits (contract §5 — same queue philosophy). Set/reset
     // pin the cell; generators flow around pins at the next bar.
@@ -299,7 +313,7 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
             MidiPerturbation pert;
             pert.channel = m.getChannel(); pert.note = m.getNoteNumber();
             pert.velocity = m.getVelocity(); pert.amount = 1.0f;
-            engine_.handleMidiIn(pert);
+            slot_.active().handleMidiIn(pert);
         }
     }
     midi.clear();
@@ -334,16 +348,13 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
         voices_.render(buffer.getArrayOfWritePointers(), buffer.getNumChannels(), numSamples,
                        p_.gain->load(std::memory_order_relaxed));
 
-    kViz_.store(engine_.sourceCount(), std::memory_order_relaxed);
+    kViz_.store(slot_.sourceCount(), std::memory_order_relaxed);
 
     // Publish the GUI snapshot (wait-free; fixed copies only — no alloc).
     {
         GuiSnapshot& s = snapshots_.writeSlot();
-        s.k = engine_.sourceCount();
-        s.n = engine_.latticeWells();
-        for (int i = 0; i < s.k; ++i) { s.theta[i] = engine_.theta(i); s.omega[i] = engine_.omega(i); }
+        slot_.fillSnapshot(s);   // active engine's view state (kind + phases/energy/…)
         for (int i = 0; i < kMaxSources; ++i) s.cells[i] = offset_.cell(i);
-        s.gen = engine_.generation();
         s.bpm = ts.bpm; s.ppq = ts.ppqAtBlockStart;
         s.timeSigNum = ts.timeSigNum; s.timeSigDen = ts.timeSigDen;
         s.isPlaying = ts.isPlaying;
@@ -396,14 +407,29 @@ juce::AudioProcessorEditor* OrreryProcessor::createEditor() {
 #endif
 }
 
+static juce::var chunkVar(const orrery::Chunk& c) {
+    return juce::var(juce::MemoryBlock(c.bytes.data(), c.bytes.size()));
+}
+static bool loadChunk(const juce::ValueTree& vt, const char* key, orrery::Chunk& out) {
+    if (const auto* mb = vt.getProperty(key).getBinaryData()) {
+        out.bytes.assign(static_cast<const uint8_t*>(mb->getData()),
+                         static_cast<const uint8_t*>(mb->getData()) + mb->getSize());
+        return true;
+    }
+    return false;
+}
+
 void OrreryProcessor::getStateInformation(juce::MemoryBlock& dest) {
-    Chunk eng; engine_.saveState(eng);
-    Chunk off; offset_.saveCells(off);
+    Chunk e, m, p, off;
+    slot_.saveState(e, m, p);
+    offset_.saveCells(off);
     juce::ValueTree vt("ORRERY_STATE");
     vt.setProperty("seed", juce::int64(projectSeed_), nullptr);
     vt.setProperty("apvts", apvts_.copyState().toXmlString(), nullptr);
-    vt.setProperty("engine", juce::var(juce::MemoryBlock(eng.bytes.data(), eng.bytes.size())), nullptr);
-    vt.setProperty("offset", juce::var(juce::MemoryBlock(off.bytes.data(), off.bytes.size())), nullptr);
+    vt.setProperty("elastic",  chunkVar(e), nullptr);
+    vt.setProperty("measured", chunkVar(m), nullptr);
+    vt.setProperty("probable", chunkVar(p), nullptr);
+    vt.setProperty("offset",   chunkVar(off), nullptr);
     juce::MemoryOutputStream mos(dest, false);
     vt.writeToStream(mos);
 }
@@ -414,16 +440,10 @@ void OrreryProcessor::setStateInformation(const void* data, int sizeInBytes) {
     projectSeed_ = static_cast<uint64_t>(static_cast<juce::int64>(vt.getProperty("seed")));
     if (auto xml = juce::parseXML(vt.getProperty("apvts").toString()))
         apvts_.replaceState(juce::ValueTree::fromXml(*xml));
-    if (const auto* mb = vt.getProperty("engine").getBinaryData()) {
-        Chunk c; c.bytes.assign(static_cast<const uint8_t*>(mb->getData()),
-                                static_cast<const uint8_t*>(mb->getData()) + mb->getSize());
-        engine_.loadState(c);
-    }
-    if (const auto* mb = vt.getProperty("offset").getBinaryData()) {
-        Chunk c; c.bytes.assign(static_cast<const uint8_t*>(mb->getData()),
-                                static_cast<const uint8_t*>(mb->getData()) + mb->getSize());
-        offset_.loadCells(c);
-    }
+    Chunk e, m, p, off;
+    if (loadChunk(vt, "elastic", e) && loadChunk(vt, "measured", m) && loadChunk(vt, "probable", p))
+        slot_.loadState(e, m, p);
+    if (loadChunk(vt, "offset", off)) offset_.loadCells(off);
     // Reseed streams from the restored seed (rng stream position is not part of
     // saved state in O1b — deterministic from this reset point).
     slotRng_.seed(projectSeed_, 0);
