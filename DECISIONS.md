@@ -205,3 +205,30 @@ history; supersede with a new numbered entry.
     — roadmap). Known: auval prints a benign debug-only `MessageManager` leak
     (the CoreMIDI subsystem instantiates JUCE's message-thread singleton, which
     auval's minimal host doesn't tear down; real DAWs own it — no leak there).
+
+16. **Visual system: design-token file + IEngineView seam; engine views live in
+    their territory's gui/ (sanctioned boundary exemption)** (2026-07-13, human
+    re-prioritization: "modular, cleanly structured, aesthetic visual system…
+    jumped up in the roadmap"; aesthetic approved via mockup = match the
+    prototypes). Architecture mirrors the proven engine seam:
+    - `shell/plugin/gui/Theme.h` — ALL color/type/metric tokens (prototype
+      palette verbatim); one `OrreryLookAndFeel`; no ad-hoc colors anywhere.
+    - `IEngineView` (shell/plugin/gui/) — the GUI analog of `IEngine`: each
+      engine territory owns ONE view in `engines/<name>/gui/`, depending only on
+      the seam headers (IEngineView/Theme/Snapshot) + its own engine; never on
+      the shell's internals or a sibling view. First instance:
+      `engines/elastic-euclid/gui/ElasticView` (ring/ghosts/whiskers/playhead).
+    - Data flow is queue-only: audio→GUI via a wait-free `TripleBuffer`
+      publishing a POD `GuiSnapshot` per block; GUI→audio via SPSC rings
+      (`GestureEvent` for engine gestures, new `OffsetEdit` for offset-lane hand
+      edits — contract §5's queue philosophy). The GUI never touches model
+      state; RT no-alloc gate stayed green (0 allocs/4000 blocks).
+    - **Boundary-gate change (gated file, flagged):** `check_core_boundary.py`
+      now exempts `engines/<name>/gui/` — the view is JUCE by nature and is the
+      organ's ADAPTER zone; engine cores (src/include/tests) remain fully
+      scanned, shell/core keeps zero exemptions. Views compile in the plugin
+      target (only place JUCE exists); ownership stays in the territory.
+    Rejected: views inside shell/plugin (breaks organ ownership — every engine
+    PR would touch the shell); a per-engine JUCE dependency in engine CMake
+    (drags JUCE into the core build path); GUI reading engine state directly
+    (races; violates the snapshot isolation that keeps this maintainable).

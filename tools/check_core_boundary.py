@@ -13,6 +13,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCAN_DIRS = ["shell/core", "engines"]  # engines are framework-free too
+
+# The one sanctioned exemption (DECISIONS #16): engines/<name>/gui/ is each
+# engine's VIEW adapter — the organ owns its visualization, and views are JUCE
+# by nature (they compile only in the plugin build). The engine CORE (model/
+# src/include/tests) stays framework-free and fully scanned. shell/core has NO
+# exemption.
+def exempt(path: Path) -> bool:
+    rel = path.relative_to(ROOT)
+    return rel.parts[0] == "engines" and "gui" in rel.parts
 PATTERNS = [
     re.compile(r"#\s*include\s*[<\"]juce", re.IGNORECASE),
     re.compile(r"\bjuce::"),
@@ -29,6 +38,8 @@ def main() -> int:
             continue
         for path in sorted(base.rglob("*")):
             if not path.is_file() or path.suffix not in EXTS:
+                continue
+            if exempt(path):
                 continue
             for lineno, line in enumerate(
                     path.read_text(errors="replace").splitlines(), 1):

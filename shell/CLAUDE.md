@@ -83,6 +83,25 @@ build if any `juce`/`JUCE_*` token appears under `shell/core/`.
 - `tests/test_rt_noalloc.cpp` — the **RT gate**: thread-local allocation hook
   asserts 0 heap allocs across steady-state `renderBlock`s (warm-up excluded).
 
+## GUI map (O-GUI — `shell/plugin/gui/`, DECISIONS #16)
+The visual system mirrors the engine seam. Rules that keep it mess-free:
+- **`Theme.h` is the ONLY source of color/type/metric** (prototype palette
+  verbatim) + one `OrreryLookAndFeel`. No ad-hoc colors in any component.
+- **`IEngineView.h` is the GUI seam** — each engine owns ONE view in
+  `engines/<name>/gui/` (JUCE allowed there: it's the organ's adapter zone,
+  exempted in `check_core_boundary.py`; engine cores stay fully scanned).
+  A view depends on IEngineView/Theme/Snapshot + its OWN engine only. Views
+  COMPILE in the plugin target (the only JUCE build); add one line per view
+  in this dir's CMakeLists.
+- **Queue-only data flow** (`Snapshot.h`): audio→GUI = `GuiSnapshot` POD via
+  wait-free `TripleBuffer` (published per block); GUI→audio = `GestureEvent` +
+  `OffsetEdit` SPSC rings. The GUI NEVER touches engine/offset state directly.
+- Chrome (engine-agnostic): `Chrome.{h,cpp}` (HeaderBar w/ transport chip +
+  manual TICK, EngineTabs, RoutingBar), `ParamRail` (APVTS-attached rows from a
+  row spec), `OffsetLane` (drag-to-pin cells, locks, generator chips),
+  `PluginEditor` (assembly only). Currently hosts the Elastic view; Measured/
+  Probable tabs are disabled until multi-engine slot hosting lands.
+
 Build/validate (machine-local, human-run — global CLAUDE.md gotchas): the
 codesign re-seal is a CMake `POST_BUILD` (JUCE regenerates `moduleinfo.json`
 after signing → broken seal → DAW silently skips it). `auval`/install to

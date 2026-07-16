@@ -22,7 +22,16 @@ juce_add_plugin(Orrery
 target_sources(Orrery PRIVATE
     PluginProcessor.cpp
     TraceDrain.cpp
-    MidiOut.cpp)
+    MidiOut.cpp
+    gui/OrreryLookAndFeel.cpp
+    gui/Chrome.cpp
+    gui/ParamRail.cpp
+    gui/OffsetLane.cpp
+    gui/PluginEditor.cpp
+    # Engine views live in their engine's territory (engines/<name>/gui/ — the
+    # organ owns its visualization); the plugin target is where they COMPILE,
+    # since only this target has JUCE. Add one line per engine view.
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../engines/elastic-euclid/gui/ElasticView.cpp)
 
 target_compile_definitions(Orrery PRIVATE
     ORRERY_WITH_EDITOR=1
@@ -30,7 +39,9 @@ target_compile_definitions(Orrery PRIVATE
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0)
 
-target_include_directories(Orrery PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(Orrery PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../engines)   # engine views: <name>/gui/...
 
 target_link_libraries(Orrery
     PRIVATE

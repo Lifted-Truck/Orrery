@@ -21,6 +21,7 @@
 #include "Lockfree.h"
 #include "MidiOut.h"
 #include "Voices.h"
+#include "gui/Snapshot.h"
 
 namespace orrery {
 
@@ -70,7 +71,12 @@ public:
 
     // GUI/test affordances (message thread).
     void pushGesture(const orrery::GestureEvent& g) { gestureRing_.push(g); }
+    void pushOffsetEdit(const orrery::OffsetEdit& e) { offsetEdits_.push(e); }
+    bool readSnapshot(orrery::GuiSnapshot& out) { return snapshots_.read(out); }
     void requestManualTick() { manualTicks_.fetch_add(1, std::memory_order_relaxed); }
+    juce::AudioProcessorValueTreeState& apvts() { return apvts_; }
+    bool virtualMidiOpen() const { return virtualMidi_ != nullptr && virtualMidi_->isOpen(); }
+    uint64_t projectSeed() const { return projectSeed_; }
     // Headless tests disable the off-thread trace drain (no file IO / no second
     // allocating thread) before prepareToPlay.
     void setTraceDrainEnabled(bool on) { enableTraceDrain_ = on; }
@@ -122,8 +128,10 @@ private:
         std::atomic<float>* internalAudio = nullptr;  // gate the fallback voices
     } p_;
     orrery::SpscRing<orrery::GestureEvent, 256>    gestureRing_;
+    orrery::SpscRing<orrery::OffsetEdit, 256>      offsetEdits_;   // GUI → offset layer
     orrery::SpscRing<orrery::TraceRecordPod, 256>  traceRing_;
     orrery::SpscRing<orrery::MidiOutEvent, 512>    midiOutRing_;   // audio → virtual port
+    orrery::TripleBuffer<orrery::GuiSnapshot>      snapshots_;     // audio → GUI
     std::unique_ptr<TraceDrain>    drain_;
     std::unique_ptr<VirtualMidiOut> virtualMidi_;
 

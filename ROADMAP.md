@@ -5,6 +5,23 @@
 > the rung-2→3 escalation made explicit. The contract doc defines *what*;
 > this defines *in what order and gated by what*.
 
+## Re-prioritization (2026-07-13, human)
+Two items jumped up ahead of further engines — establish structure before it
+sprawls:
+- **O-GUI — Modular visual system.** 🟡 **Vertical slice DONE 2026-07-13**
+  (DECISIONS #16): mockup approved → `shell/plugin/gui/` (Theme tokens,
+  LookAndFeel, `IEngineView` seam, `GuiSnapshot` triple-buffer, `OffsetEdit`
+  ring, chrome: header/tabs/param-rail/offset-lane/routing) + the first
+  engine-owned view `engines/elastic-euclid/gui/ElasticView` (ring, E(k,n)
+  ghosts, whiskers, playhead, click-to-kick). Replaces the generic editor.
+  RT no-alloc green; auval SUCCEEDED. *Remaining: Measured + Probable views
+  (blocked on multi-engine slot hosting), lattice-pull-scaled ticks, per-cell
+  drag polish, resize persistence.*
+- **O-sync — Tempo/transport tightening.** Host-clock generation already follows
+  Ableton (bpm/ppq/time-sig/isPlaying → bar-grid latches). Remaining: timestamp
+  the CoreMIDI virtual-port sends so Ableton-routed notes land beat-tight (not
+  ~1 ms drain-jittered), + transport loop/reposition/count-in verification.
+
 ## Build sequence (phase-gated)
 
 ### Rung 2 — prove the seam (single-threaded lead)

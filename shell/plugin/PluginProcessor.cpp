@@ -2,6 +2,10 @@
 #include "PluginProcessor.h"
 #include "TraceDrain.h"
 
+#if ORRERY_WITH_EDITOR
+#include "gui/PluginEditor.h"
+#endif
+
 #include <cmath>
 
 using namespace orrery;
@@ -158,7 +162,7 @@ void OrreryProcessor::applyParams() {
 }
 
 void OrreryProcessor::doLatch(int64_t gen, double lapPpq, const TransportState& ts,
-                              juce::MidiBuffer& midi, int /*blockOff*/) {
+                              juce::MidiBuffer& /*midi*/, int /*blockOff*/) {
     TickContext ctx; ctx.generation = gen; ctx.clock = clockCfg_; ctx.tempoBpm = ts.bpm;
     ctx.rng = &slotRng_;
     engine_.tick(ctx);
@@ -232,6 +236,18 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     GestureEvent g;
     while (gestureRing_.pop(g)) engine_.handleGesture(g);
 
+    // Offset-cell hand edits (contract §5 — same queue philosophy). Set/reset
+    // pin the cell; generators flow around pins at the next bar.
+    OffsetEdit oe;
+    while (offsetEdits_.pop(oe)) {
+        switch (oe.type) {
+            case OffsetEdit::Type::Transpose: offset_.setTranspose(oe.id, oe.value); break;
+            case OffsetEdit::Type::VelOffset: offset_.setVelOffset(oe.id, oe.value); break;
+            case OffsetEdit::Type::ResetCell: offset_.resetCell(oe.id); break;
+            case OffsetEdit::Type::UnlockAll: offset_.unlockAll(); break;
+        }
+    }
+
     // MIDI in → engine perturbation, then repurpose the buffer for our output.
     for (const auto meta : midi) {
         const auto m = meta.getMessage();
@@ -262,6 +278,20 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
                        p_.gain->load(std::memory_order_relaxed));
 
     kViz_.store(engine_.sourceCount(), std::memory_order_relaxed);
+
+    // Publish the GUI snapshot (wait-free; fixed copies only — no alloc).
+    {
+        GuiSnapshot& s = snapshots_.writeSlot();
+        s.k = engine_.sourceCount();
+        s.n = engine_.latticeWells();
+        for (int i = 0; i < s.k; ++i) { s.theta[i] = engine_.theta(i); s.omega[i] = engine_.omega(i); }
+        for (int i = 0; i < kMaxSources; ++i) s.cells[i] = offset_.cell(i);
+        s.gen = engine_.generation();
+        s.bpm = ts.bpm; s.ppq = ts.ppqAtBlockStart;
+        s.timeSigNum = ts.timeSigNum; s.timeSigDen = ts.timeSigDen;
+        s.isPlaying = ts.isPlaying;
+        snapshots_.publish();
+    }
 }
 
 void OrreryProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
@@ -285,9 +315,9 @@ void OrreryProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
 
 juce::AudioProcessorEditor* OrreryProcessor::createEditor() {
 #if ORRERY_WITH_EDITOR
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new OrreryEditor(*this);   // the shell chrome + active IEngineView
 #else
-    return nullptr;
+    return nullptr;                    // headless builds (RT test)
 #endif
 }
 
