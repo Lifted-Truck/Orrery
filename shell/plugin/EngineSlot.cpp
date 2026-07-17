@@ -18,6 +18,7 @@ void EngineSlot::applyParams(juce::AudioProcessorValueTreeState& p) {
             elastic_.setLattice(pv(p, "lattice"));
             elastic_.setDamping(pv(p, "damping"));
             elastic_.setRelax(pv(p, "relax"));
+            elastic_.setFrozen(pv(p, "freeze") > 0.5f);
             // "sources" → particle count via Add/Remove (Elastic only).
             const int target = juce::jlimit(1, kMaxSources, (int)pv(p, "sources"));
             int cur = elastic_.sourceCount();
@@ -31,6 +32,9 @@ void EngineSlot::applyParams(juce::AudioProcessorValueTreeState& p) {
             measured_.setPhase(pv(p, "m_phase"));
             measured_.setQuantize(pv(p, "m_quantize"));
             measured_.setBreathe(pv(p, "m_breathe") > 0.5f, (int)pv(p, "m_breathePeriod"));
+            measured_.setPresetCycles((int)pv(p, "m_cycles"));
+            measured_.setPresetSlope(pv(p, "m_slope"));
+            measured_.setPresetSubdiv((int)pv(p, "m_subdiv"));
             break;
         case EngineKind::Probable:
             probable_.setN((int)pv(p, "p_n"));
@@ -38,7 +42,7 @@ void EngineSlot::applyParams(juce::AudioProcessorValueTreeState& p) {
             probable_.setTemperature(pv(p, "p_temperature"));
             probable_.setClump(pv(p, "p_clump"));
             probable_.setAnchor(pv(p, "p_anchor"));
-            probable_.setFrozen(pv(p, "p_freeze") > 0.5f);
+            probable_.setFrozen(pv(p, "p_freeze") > 0.5f || pv(p, "freeze") > 0.5f);
             break;
     }
 }

@@ -14,10 +14,15 @@ HeaderBar::HeaderBar() {
     run_.setClickingTogglesState(true);
     run_.setVisible(false);   // shown only on the internal clock (no host ppq)
     addAndMakeVisible(run_);
+    freeze_.setComponentID("chip-cyan");   // loop lock — cyan, the "held" color
+    freeze_.setClickingTogglesState(true);
+    freeze_.setTooltip("lock the loop: Elastic holds its physics, Probable holds its realization");
+    addAndMakeVisible(freeze_);
 }
 
-void HeaderBar::bindRun(juce::AudioProcessorValueTreeState& apvts) {
-    runAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(apvts, "run", run_);
+void HeaderBar::bindParams(juce::AudioProcessorValueTreeState& apvts) {
+    runAttach_    = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(apvts, "run", run_);
+    freezeAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(apvts, "freeze", freeze_);
 }
 
 void HeaderBar::update(const GuiSnapshot& s) {
@@ -32,12 +37,13 @@ void HeaderBar::update(const GuiSnapshot& s) {
 }
 
 void HeaderBar::resized() {
-    // Right-to-left chain: [transport text][TICK][RUN][pill] — only visible
-    // chips take space; paint() ends the text left of the leftmost visible
-    // chip so nothing can overlap.
+    // Right-to-left chain: [transport text][TICK][RUN][FREEZE][pill] — only
+    // visible chips take space; paint() ends the text left of the leftmost
+    // visible chip so nothing can overlap.
     const int pillW = 96, h = 22;
     const int y = (getHeight() - h) / 2;
     int x = getWidth() - theme::pad - pillW - 10;
+    freeze_.setBounds(x - 58, y, 58, h);  x -= 58 + 6;
     if (run_.isVisible())  { run_.setBounds(x - 48, y, 48, h);  x -= 48 + 6; }
     if (tick_.isVisible()) { tick_.setBounds(x - 52, y, 52, h); }
 }
@@ -67,7 +73,8 @@ void HeaderBar::paint(juce::Graphics& g) {
     const int pillW = 96, pillH = 22;
     const auto pill = juce::Rectangle<int>(getWidth() - theme::pad - pillW,
                                            (getHeight() - pillH) / 2, pillW, pillH);
-    int textEnd = pill.getX() - 12;
+    // Text ends left of the leftmost visible chip (freeze is always visible).
+    int textEnd = freeze_.getX() - 12;
     if (run_.isVisible())  textEnd = std::min(textEnd, run_.getX() - 12);
     if (tick_.isVisible()) textEnd = std::min(textEnd, tick_.getX() - 12);
     juce::String t = juce::String(bpm_, 1) + " BPM · " + juce::String(sigN_) + "/" + juce::String(sigD_)
@@ -169,10 +176,18 @@ RoutingBar::RoutingBar(juce::AudioProcessorValueTreeState& apvts,
     audioAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         apvts, "internalAudio", audioChip_);
     addAndMakeVisible(audioChip_);
+    spreadChip_.setComponentID("chip");
+    spreadChip_.setClickingTogglesState(true);
+    spreadChip_.setTooltip("note map: on = melodic spread per source (36+3·(id%5)); "
+                           "off = one pitch for all sources (hear offsets in isolation)");
+    spreadAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        apvts, "noteSpread", spreadChip_);
+    addAndMakeVisible(spreadChip_);
 }
 
 void RoutingBar::resized() {
     audioChip_.setBounds(360, (getHeight() - 22) / 2, 58, 22);
+    spreadChip_.setBounds(546, (getHeight() - 22) / 2, 64, 22);
 }
 
 void RoutingBar::paint(juce::Graphics& g) {

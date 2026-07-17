@@ -72,6 +72,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
             juce::NormalisableRange<float>(0.0f, 1.0f), 0.0f),
         std::make_unique<BoolParam>(P{"m_breathe", 1}, "M Breathe", false),
         std::make_unique<IntParam>(P{"m_breathePeriod", 1}, "M Breathe Period", 2, 64, 8),
+        // Preset shape (each affects only its own preset when loaded).
+        std::make_unique<IntParam>(P{"m_cycles", 1}, "M Cycles", 1, 16, 3),
+        std::make_unique<FloatParam>(P{"m_slope", 1}, "M Slope",
+            juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f),
+        std::make_unique<IntParam>(P{"m_subdiv", 1}, "M Subdiv", 1, 16, 4),
         // Probable Euclid engine (spec §3; n capped at 32, DECISIONS #14).
         std::make_unique<IntParam>(P{"p_n", 1}, "P Grid", 4, 32, 16),
         std::make_unique<FloatParam>(P{"p_density", 1}, "P Density",
@@ -89,6 +94,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
         // Internal transport (used ONLY when the host provides no ppq — the
         // standalone). Default on so the standalone plays out of the box.
         std::make_unique<BoolParam>(P{"run", 1}, "Run", true),
+        // Freeze: lock the loop — Elastic holds its physics, Probable holds its
+        // realization (Measured is already a locked loop by nature).
+        std::make_unique<BoolParam>(P{"freeze", 1}, "Freeze", false),
+        // Note map: spread (36+3·(id%5), melodic) vs mono (all sources one
+        // pitch). Explains "auto transpose": with spread on, different sources
+        // have different BASE notes even at zero offset.
+        std::make_unique<BoolParam>(P{"noteSpread", 1}, "Note Spread", true),
         // Onboard voice controls (VOICE rail section). tune is voice-only
         // monitoring pitch (default +12 = an octave up); MIDI-out is unchanged.
         std::make_unique<IntParam>(P{"voiceTune", 1}, "Tune", -24, 24, 12),
@@ -128,6 +140,7 @@ OrreryProcessor::OrreryProcessor()
     p_.voiceTransient = apvts_.getRawParameterValue("voiceTransient");
     p_.voiceDrop      = apvts_.getRawParameterValue("voiceDrop");
     p_.engineSelect   = apvts_.getRawParameterValue("engine");
+    p_.noteSpread = apvts_.getRawParameterValue("noteSpread");
     engineParam_ = dynamic_cast<juce::AudioParameterChoice*>(apvts_.getParameter("engine"));
 }
 
@@ -180,6 +193,15 @@ void OrreryProcessor::applyParams() {
     clockCfg_ = cfg;
 
     router_.quantizeOut = *p_.quantizeOut;
+
+    // Note map: spread (melodic minor-third cycle) vs mono (one pitch — hear
+    // the offset layer's transposes in isolation). Synced on change only.
+    const bool spread = *p_.noteSpread > 0.5f;
+    if (spread != lastSpread_) {
+        for (int i = 0; i < kMaxSources; ++i)
+            router_.setNoteMapEntry(i, spread ? 36 + 3 * (i % 5) : 48);
+        lastSpread_ = spread;
+    }
 
     auto& w = offset_.walk();
     w.enabled = *p_.walkOn > 0.5f;

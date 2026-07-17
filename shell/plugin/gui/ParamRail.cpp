@@ -50,6 +50,13 @@ void ParamRail::refreshValue(Bound& b) {
     b.value->setText(t + b.row.suffix, juce::dontSendNotification);
 }
 
+int ParamRail::preferredHeight() const {
+    int y = theme::pad + kTitleH;
+    for (auto& b : rows_)
+        y += b.slider ? kRowH : (isHeader(b.row.paramId, b.row.label) ? kSecH : kDivH);
+    return y + theme::pad;
+}
+
 void ParamRail::resized() {
     int y = theme::pad + kTitleH;
     for (auto& b : rows_) {

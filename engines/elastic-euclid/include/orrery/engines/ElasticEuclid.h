@@ -50,6 +50,12 @@ public:
     void setLattice(double v);
     void setDamping(double v);
     void setRelax(double seconds);
+    // Freeze: hold the loop — tick() skips the physics (θ/ω untouched) so the
+    // latched pattern repeats exactly; gestures still store, and relaxation
+    // resumes from the stored state on unfreeze. (Human-requested capability
+    // beyond the original spec; noted in this territory's CLAUDE.md.)
+    void setFrozen(bool f) { frozen_ = f; }
+    bool frozen() const { return frozen_; }
     int  latticeWells() const { return n_; }
 
     // ── Introspection (tests / GUI snapshot; message thread) ─────────────────
@@ -81,6 +87,7 @@ private:
     double   lattice_   = 0.6;
     double   damping_   = 0.35;
     double   relax_     = 0.08;       // simulated seconds of relaxation per tick
+    bool     frozen_    = false;
     int64_t  generation_ = 0;
 
     TriggerEvent latched_[kMaxSources];

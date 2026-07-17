@@ -45,6 +45,11 @@ public:
     void setQuantize(double q);
     void setBreathe(bool on, int periodBars = 8);
     void setDrawnPreset(Preset p);            // load slot A (edit target)
+    // Preset shape parameters. Changing one REGENERATES the drawn curve iff its
+    // preset is the one last loaded (a hand-drawn curve is never clobbered).
+    void setPresetCycles(int c);              // Waves: 1..16 sine cycles
+    void setPresetSlope(double s);            // Rise/Fall: -1 log … 0 linear … +1 hyperbolic
+    void setPresetSubdiv(int s);              // Beats: 1..16 pulses per bar
     int  sourceCount() const { return k_; }
 
     // ── Introspection (tests / GUI) ──────────────────────────────────────────
@@ -83,6 +88,10 @@ private:
     int    n_ = 16;
     double phase_ = 0.0;
     double q_ = 0.0;
+    Preset lastPreset_ = Preset::Flat;
+    int    presetCycles_ = 3;
+    double presetSlope_  = 0.0;
+    int    presetSubdiv_ = 4;
     bool   breathe_ = false;
     int    breathePeriod_ = 8;
     int64_t generation_ = 0;

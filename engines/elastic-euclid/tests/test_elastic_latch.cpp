@@ -41,6 +41,26 @@ static void run() {
     // The next tick unfreezes the latch and lets everything relax together.
     TickContext c; c.generation = 11; e.tick(c);
     CHECK_EQ(static_cast<int>(e.latchedEvents().size()), e.sourceCount());
+
+    // FREEZE (additive check for the loop-lock capability): while frozen, ticks
+    // leave θ/ω bit-identical (the pattern repeats exactly); unfreezing after a
+    // kick resumes relaxation from the stored state.
+    {
+        ElasticEuclid f; f.seed(9, 2); f.setN(16);
+        for (int t = 0; t < 5; ++t) { TickContext tc; tc.generation = t; f.tick(tc); }
+        f.handleGesture({GestureEvent::Type::Kick, 0, 1.0f});   // stored energy
+        f.setFrozen(true);
+        double th[kMaxSources], om[kMaxSources];
+        const int k = f.sourceCount();
+        for (int i = 0; i < k; ++i) { th[i] = f.theta(i); om[i] = f.omega(i); }
+        for (int t = 5; t < 15; ++t) { TickContext tc; tc.generation = t; f.tick(tc); }
+        for (int i = 0; i < k; ++i) { CHECK(f.theta(i) == th[i]); CHECK(f.omega(i) == om[i]); }
+        f.setFrozen(false);
+        TickContext tc; tc.generation = 15; f.tick(tc);
+        bool moved = false;
+        for (int i = 0; i < k; ++i) if (f.theta(i) != th[i]) moved = true;
+        CHECK(moved);   // the stored kick energy resumes relaxing
+    }
 }
 
 RUN_MAIN()

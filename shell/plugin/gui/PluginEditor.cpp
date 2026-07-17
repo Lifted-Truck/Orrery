@@ -37,7 +37,13 @@ RailSpec railFor(int engine) {
               { "",          "", "", 0 },
               { "m_phase",   "phase",    "",  2 },
               { "m_quantize","quantize", "",  2 },
-              { "m_breathePeriod", "breathe", "bar", -1 } };
+              { "m_breathePeriod", "breathe", "bar", -1 },
+              // Preset-shape knobs: each re-shapes ITS preset when loaded
+              // (waves→cycles, rise/fall→slope, beats→subdiv).
+              { "",          "PRESET SHAPE", "", 0 },
+              { "m_slope",   "slope",    "",  2 },
+              { "m_cycles",  "cycles",   "", -1 },
+              { "m_subdiv",  "subdiv",   "", -1 } };
     } else if (engine == 2) {   // Probable
         title = "PROBABLE EUCLID";
         r = { { "p_n",          "grid n",      "", -1 },
@@ -68,7 +74,11 @@ OrreryEditor::OrreryEditor(OrreryProcessor& p)
 
     addAndMakeVisible(header_);
     header_.onTick = [this] { proc_.requestManualTick(); };
-    header_.bindRun(proc_.apvts());
+    header_.bindParams(proc_.apvts());
+
+    railView_.setScrollBarsShown(true, false);
+    railView_.setScrollBarThickness(8);
+    addAndMakeVisible(railView_);
 
     tabs_.setTabs({ { "ELASTIC",  "equilibrium", true },
                     { "MEASURED", "measure",     true },
@@ -116,8 +126,8 @@ void OrreryEditor::setEngine(int index) {
     addAndMakeVisible(*view_);
 
     auto spec = railFor(index);
-    rail_ = std::make_unique<ParamRail>(proc_.apvts(), spec.title, spec.rows);
-    addAndMakeVisible(*rail_);
+    rail_ = new ParamRail(proc_.apvts(), spec.title, spec.rows);
+    railView_.setViewedComponent(rail_, true);   // viewport owns the rail
 
     resized();
 }
@@ -140,6 +150,12 @@ void OrreryEditor::resized() {
     tabs_.setBounds(r.removeFromTop(theme::tabsH));
     routing_->setBounds(r.removeFromBottom(theme::footH));
     lane_->setBounds(r.removeFromBottom(theme::laneH));
-    if (rail_) rail_->setBounds(r.removeFromRight(theme::railW));
+    auto railArea = r.removeFromRight(theme::railW);
+    railView_.setBounds(railArea);
+    if (rail_) {
+        const int prefH = rail_->preferredHeight();
+        const int w = theme::railW - (prefH > railArea.getHeight() ? 8 : 0);
+        rail_->setSize(w, std::max(prefH, railArea.getHeight()));
+    }
     if (view_) view_->setBounds(r);
 }

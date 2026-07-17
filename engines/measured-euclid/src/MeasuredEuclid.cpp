@@ -28,7 +28,27 @@ void MeasuredEuclid::setN(int n) { n_ = clampi(n, 1, 64); }
 void MeasuredEuclid::setPhase(double p) { phase_ = wrap(p); }
 void MeasuredEuclid::setQuantize(double q) { q_ = clampd(q, 0.0, 1.0); }
 void MeasuredEuclid::setBreathe(bool on, int period) { breathe_ = on; breathePeriod_ = clampi(period, 2, 64); }
-void MeasuredEuclid::setDrawnPreset(Preset p) { loadPreset(wDrawn_, p); }
+void MeasuredEuclid::setDrawnPreset(Preset p) { lastPreset_ = p; loadPreset(wDrawn_, p); }
+
+void MeasuredEuclid::setPresetCycles(int c) {
+    c = clampi(c, 1, 16);
+    if (c == presetCycles_) return;
+    presetCycles_ = c;
+    if (lastPreset_ == Preset::Waves) loadPreset(wDrawn_, lastPreset_);
+}
+void MeasuredEuclid::setPresetSlope(double s) {
+    s = clampd(s, -1.0, 1.0);
+    if (s == presetSlope_) return;
+    presetSlope_ = s;
+    if (lastPreset_ == Preset::RampUp || lastPreset_ == Preset::RampDown)
+        loadPreset(wDrawn_, lastPreset_);
+}
+void MeasuredEuclid::setPresetSubdiv(int s) {
+    s = clampi(s, 1, 16);
+    if (s == presetSubdiv_) return;
+    presetSubdiv_ = s;
+    if (lastPreset_ == Preset::Beats) loadPreset(wDrawn_, lastPreset_);
+}
 
 static double gaussWrap(double t, double mu, double sig) {
     const double d = std::abs(std::fmod(std::fmod(t - mu + 0.5, 1.0) + 1.0, 1.0) - 0.5);
@@ -36,17 +56,31 @@ static double gaussWrap(double t, double mu, double sig) {
 }
 
 void MeasuredEuclid::loadPreset(double* w, Preset p) {
+    // Slope → shape exponent: -1 → 0.25 (log-like, fast early rise), 0 → 1
+    // (linear), +1 → 4 (hyperbolic, slow start then steep).
+    const double slopeExp = std::pow(4.0, presetSlope_);
+    // Beats: pulse width scales with subdivision count (S=4 → prototype 0.025).
+    const int S = presetSubdiv_;
+    const double sigma = clampd(0.1 / S, 0.008, 0.05);
+
     for (int i = 0; i < kM; ++i) {
         const double t = static_cast<double>(i) / kM;
         switch (p) {
             case Preset::Flat:     w[i] = 0.5; break;
-            case Preset::RampUp:   w[i] = 0.02 + 0.96 * t; break;
-            case Preset::RampDown: w[i] = 0.98 - 0.96 * t; break;
-            case Preset::Waves:    w[i] = 0.5 + 0.4 * std::sin(kTwoPi * 3.0 * t); break;
-            case Preset::Beats:
-                w[i] = 0.08 + 0.90 * gaussWrap(t, 0.0, 0.025) + 0.45 * gaussWrap(t, 0.25, 0.025)
-                     + 0.65 * gaussWrap(t, 0.5, 0.025) + 0.45 * gaussWrap(t, 0.75, 0.025);
+            case Preset::RampUp:   w[i] = 0.02 + 0.96 * std::pow(t, slopeExp); break;
+            case Preset::RampDown: w[i] = 0.02 + 0.96 * std::pow(1.0 - t, slopeExp); break;
+            case Preset::Waves:    w[i] = 0.5 + 0.4 * std::sin(kTwoPi * presetCycles_ * t); break;
+            case Preset::Beats: {
+                // Downbeat strongest, midpoint accented, others weak (the
+                // prototype's 0.9/0.45/0.65/0.45 pattern, generalized to S).
+                double v = 0.08;
+                for (int j = 0; j < S; ++j) {
+                    const double amp = j == 0 ? 0.90 : (S % 2 == 0 && j == S / 2 ? 0.65 : 0.45);
+                    v += amp * gaussWrap(t, static_cast<double>(j) / S, sigma);
+                }
+                w[i] = clampd(v, 0.0, 1.0);
                 break;
+            }
             case Preset::Rand: w[i] = 0.0; break;  // filled below (needs rng)
         }
     }

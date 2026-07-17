@@ -36,7 +36,8 @@ private:
     HeaderBar  header_;
     EngineTabs tabs_;
     std::unique_ptr<IEngineView> view_;   // the active engine's view
-    std::unique_ptr<ParamRail>   rail_;
+    juce::Viewport railView_;             // rails can exceed the window — scroll
+    ParamRail* rail_ = nullptr;           // owned by railView_
     std::unique_ptr<OffsetLane>  lane_;
     std::unique_ptr<RoutingBar>  routing_;
     int engine_ = 0;

@@ -14,9 +14,9 @@
 class HeaderBar : public juce::Component {
 public:
     HeaderBar();
-    // Binds the RUN chip to the `run` parameter (internal-transport fallback —
-    // shown only when the host provides no transport, e.g. the standalone).
-    void bindRun(juce::AudioProcessorValueTreeState&);
+    // Binds the RUN chip (internal-transport fallback — shown only when the
+    // host provides no transport) and the FREEZE chip (loop lock, always shown).
+    void bindParams(juce::AudioProcessorValueTreeState&);
     void update(const orrery::GuiSnapshot&);
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -24,8 +24,8 @@ public:
     std::function<void()> onTick;   // manual TICK while stopped (contract §3)
 
 private:
-    juce::TextButton tick_ { "TICK" }, run_ { "RUN" };
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> runAttach_;
+    juce::TextButton tick_ { "TICK" }, run_ { "RUN" }, freeze_ { "FREEZE" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> runAttach_, freezeAttach_;
     double bpm_ = 120.0;
     int sigN_ = 4, sigD_ = 4, bar_ = 1;
     bool playing_ = false, hasHost_ = false;
@@ -57,8 +57,8 @@ public:
     void resized() override;
 
 private:
-    juce::TextButton audioChip_ { "AUDIO" };
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> audioAttach_;
+    juce::TextButton audioChip_ { "AUDIO" }, spreadChip_ { "SPREAD" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> audioAttach_, spreadAttach_;
     std::function<bool()> portOpen_;
     juce::String seedHex_;
 };

@@ -23,6 +23,10 @@ public:
     ParamRail(juce::AudioProcessorValueTreeState& apvts,
               juce::String engineTitle, std::vector<Row> rows);
 
+    // Total content height — the editor sizes this inside a Viewport so long
+    // rails scroll instead of clipping.
+    int preferredHeight() const;
+
     void paint(juce::Graphics&) override;
     void resized() override;
 

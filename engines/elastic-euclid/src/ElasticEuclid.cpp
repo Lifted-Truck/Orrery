@@ -78,10 +78,12 @@ void ElasticEuclid::latch() {
 }
 
 void ElasticEuclid::tick(TickContext& ctx) {
-    const double h = relax_ / static_cast<double>(kSub);
-    for (int s = 0; s < kSub; ++s) integrate(h);
+    if (!frozen_) {
+        const double h = relax_ / static_cast<double>(kSub);
+        for (int s = 0; s < kSub; ++s) integrate(h);
+    }
     generation_ = ctx.generation;
-    latch();
+    latch();   // re-snapshot even when frozen so k changes stay visible
 }
 
 std::span<const TriggerEvent> ElasticEuclid::latchedEvents() const {
