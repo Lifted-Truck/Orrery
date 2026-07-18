@@ -1,9 +1,11 @@
 # Orrery — ROADMAP
 
-> **Single source of truth for direction.** Phase gates are never weakened to
-> pass. Derived from `sequencer-studio-architecture.md` §8 build order, with
-> the rung-2→3 escalation made explicit. The contract doc defines *what*;
-> this defines *in what order and gated by what*.
+> **Single source of truth for direction AND phase status** (DECISIONS #18:
+> the manifest carries structure only — status is never duplicated there).
+> Phase gates are never weakened to pass. Derived from
+> `sequencer-studio-architecture.md` §8 build order, with the rung-2→3
+> escalation made explicit. The contract doc defines *what*; this defines
+> *in what order, gated by what, and where we are*.
 
 ## Re-prioritization (2026-07-13, human)
 Two items jumped up ahead of further engines — establish structure before it
@@ -16,9 +18,12 @@ sprawls:
   engines now playable + visible**, tabs switch the live engine + swap view +
   param rail. Voices are the prototype's pitched percussion with a VOICE
   control section; internal transport lets the standalone free-run. RT no-alloc
-  green; auval SUCCEEDED. *Remaining polish: per-engine offset state (currently
-  shared), bool engine params in the rail (breathe/freeze), lattice-pull-scaled
-  ticks, resize persistence, note-map editor.*
+  green; auval SUCCEEDED. Since landed: playheads on all views, Measured curve
+  painting + bezier/steps draw modes + parameterized presets (slope/cycles/
+  subdiv), global FREEZE (Elastic physics-hold + Probable realization-hold),
+  note SPREAD toggle, global MIDI-out transpose. *Remaining polish: per-engine
+  offset state (currently shared), m_breathe bool in the rail, lattice-pull-
+  scaled ticks, resize persistence, note-map editor.*
 - **O-sync — Tempo/transport tightening.** Host-clock generation already follows
   Ableton (bpm/ppq/time-sig/isPlaying → bar-grid latches). Remaining: timestamp
   the CoreMIDI virtual-port sends so Ableton-routed notes land beat-tight (not

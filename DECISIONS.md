@@ -255,3 +255,19 @@ history; supersede with a new numbered entry.
     PR would touch the shell); a per-engine JUCE dependency in engine CMake
     (drags JUCE into the core build path); GUI reading engine state directly
     (races; violates the snapshot isolation that keeps this maintainable).
+
+18. **ROADMAP.md is the EXCLUSIVE home of phase/progress status; the manifest
+    carries structure only** (2026-07-13, human — cross-project alignment via
+    the autonomous loop's redundancy finding). The manifest's `status` field
+    and per-territory `status` entries had grown a parallel progress narrative
+    duplicating ROADMAP — and the duplicate had already drifted stale within a
+    day ("plugin still hosts one slot" after the multi-engine slot landed),
+    which is precisely the failure duplication invites. Now: the manifest keeps
+    durable structure only (territories, roles, specs, prototypes, contract
+    declarations — including contract-blocking facts like #8/#9/#14, which are
+    structural, not progress) plus its own ratification fact; ROADMAP carries
+    ALL phase status; the root CLAUDE.md's engine list points at ROADMAP
+    instead of restating state. Rejected: keeping both in sync by discipline
+    (empirically failed within a day). Falsifier: if a future session finds
+    phase status re-accreting in the manifest, this decision has rotted —
+    re-trim and re-point.

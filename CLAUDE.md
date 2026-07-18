@@ -23,13 +23,12 @@ trace + project state fully reconstructs a performance.
   `engines/`). Each has its own spec (source of truth for its internals), a
   validated prototype (reference oracle), and its own acceptance tests. An
   engine may ONLY depend on the contract, never on another engine's internals.
-  Current: **elastic-euclid (O2), measured-euclid (O3), probable-euclid (O3) —
-  all IMPLEMENTED as organs (`IEngine` + acceptance-test ctests green)**;
-  elastic is in the plugin slot. torus-euclid (spec validated, not built;
-  pitch path needs contract note #9); kuramoto-rotors (needs the free-transport
-  contract variant #8); coupled-rings (spec gap, O4a). `engines/_template/` is
-  the intake template. **Open contract item:** probable-euclid caps n at 32
-  pending an offset-layer capacity bump to 64 (DECISIONS #14).
+  Registered territories: elastic-euclid, measured-euclid, probable-euclid,
+  torus-euclid, kuramoto-rotors, coupled-rings — **per-engine phase status
+  lives in ROADMAP.md, nowhere else** (DECISIONS #18). Contract-blocking facts
+  (kuramoto's free-transport variant #8, torus's pitch note #9, probable's
+  offset-capacity cap #14) are declared on each territory's `contract` field in
+  the manifest. `engines/_template/` is the intake template.
 - **`integrations/tonality/`** — the Tonality consumer boundary (scaleQuant +
   pitch via the Tonality JSON contract). One boundary module; pin the version;
   degrade visibly.

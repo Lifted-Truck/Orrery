@@ -1,18 +1,18 @@
 {
   "schema": "project-manifest.0 (draft — kit v2 will formalize); COMPOSITE variant",
-  "status": "RATIFIED 2026-07-13 (O0). O1 core + O1b plugin done (AU VALIDATION SUCCEEDED). O2: elastic-euclid in the plugin slot. Rung 3 EARNED — O3: measured-euclid + probable-euclid implemented as organs (own acceptance-test verify gates). 14/14 ctests via ./verify fast. Contract gap filed: probable needs offset-layer capacity 32→64 for n=64 (DECISIONS #14). Plugin still hosts one slot (Elastic); multi-engine selection + per-engine params = later phase.",
+  "status": "RATIFIED 2026-07-13 at the O0 gate (DECISIONS #10). Phase/progress status lives EXCLUSIVELY in ROADMAP.md — never duplicated here (DECISIONS #18; the duplicate drifted stale within a day).",
   "composite": {
     "kind": "umbrella — one plugin, contract-bound sub-territories",
     "contract": "sequencer-studio-architecture.md",
     "engines_dir": "engines",
     "territories": [
       { "path": "shell", "role": "host", "note": "owns the contract implementation" },
-      { "path": "engines/elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "contract": "IEngine (tick/latch)", "status": "IMPLEMENTED (O2) — src/ElasticEuclid.cpp; spec §8 acceptance tests green; wired into the plugin slot; basin finite (documented)" },
-      { "path": "engines/measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "contract": "IEngine (tick/latch)", "status": "IMPLEMENTED (O3) — src/MeasuredEuclid.cpp; spec §6 acceptance tests green (Euclid recovery 496/496 via tie-robust round-half-up, DECISIONS #13)" },
-      { "path": "engines/probable-euclid", "role": "engine", "spec": "probable-euclid-spec.md", "prototype": "probable-euclid.html", "contract": "IEngine (tick/latch)", "status": "IMPLEMENTED (O3) — src/ProbableEuclid.cpp; §6 gates green (backbone 522/522, determinism, freeze); evenness/count recalibrated; n capped 32 pending offset-capacity contract change (DECISIONS #14)" },
-      { "path": "engines/torus-euclid", "role": "engine", "spec": "torus-euclid-spec.md", "prototype": "torus-euclid.html", "contract": "IEngine (tick/latch)", "status": "spec validated — first PITCH-generating engine; needs contract note (DECISIONS #9)" },
-      { "path": "engines/kuramoto-rotors", "role": "engine", "spec": "kuramoto-rotors-spec.md", "prototype": "kuramoto-rotors.html", "contract": "IFreeTransportEngine (NOT YET IN CONTRACT)", "status": "spec validated — BUILD-BLOCKED on the free-transport contract variant (DECISIONS #8)" },
-      { "path": "engines/coupled-rings", "role": "engine", "spec": null, "prototype": "coupled-rings.html", "contract": "IEngine (tick/latch)", "status": "SPEC GAP — build blocked until spec written (O4a)" }
+      { "path": "engines/elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "contract": "IEngine (tick/latch)" },
+      { "path": "engines/measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "contract": "IEngine (tick/latch)" },
+      { "path": "engines/probable-euclid", "role": "engine", "spec": "probable-euclid-spec.md", "prototype": "probable-euclid.html", "contract": "IEngine (tick/latch); sourceId=grid-step wants n≤64 — offset-layer capacity change filed (DECISIONS #14)" },
+      { "path": "engines/torus-euclid", "role": "engine", "spec": "torus-euclid-spec.md", "prototype": "torus-euclid.html", "contract": "IEngine (tick/latch); native pitch path needs a contract note (DECISIONS #9)" },
+      { "path": "engines/kuramoto-rotors", "role": "engine", "spec": "kuramoto-rotors-spec.md", "prototype": "kuramoto-rotors.html", "contract": "IFreeTransportEngine — NOT YET IN CONTRACT (DECISIONS #8)" },
+      { "path": "engines/coupled-rings", "role": "engine", "spec": null, "prototype": "coupled-rings.html", "contract": "IEngine (tick/latch)" }
     ]
   },
   "survey": {
