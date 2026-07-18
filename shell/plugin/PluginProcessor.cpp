@@ -48,6 +48,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
             juce::AudioParameterFloatAttributes().withLabel("ms")),
         std::make_unique<FloatParam>(P{"quantizeOut", 1}, "Quantize",
             juce::NormalisableRange<float>(0.0f, 1.0f), 0.0f),
+        // Global MIDI-out transpose: shift the whole instrument to a target
+        // register (drum-pad ranges, bass, etc.). Applied after note map +
+        // offsets; the onboard voice follows since it monitors routed notes.
+        std::make_unique<IntParam>(P{"transpose", 1}, "Transpose", -48, 48, 0),
         std::make_unique<BoolParam>(P{"walkOn", 1}, "Walk", false),
         std::make_unique<IntParam>(P{"walkStep", 1}, "Walk Step", 0, 6, 1),
         std::make_unique<BoolParam>(P{"accentOn", 1}, "Accent", false),
@@ -141,6 +145,7 @@ OrreryProcessor::OrreryProcessor()
     p_.voiceDrop      = apvts_.getRawParameterValue("voiceDrop");
     p_.engineSelect   = apvts_.getRawParameterValue("engine");
     p_.noteSpread = apvts_.getRawParameterValue("noteSpread");
+    p_.transpose  = apvts_.getRawParameterValue("transpose");
     engineParam_ = dynamic_cast<juce::AudioParameterChoice*>(apvts_.getParameter("engine"));
 }
 
@@ -193,6 +198,7 @@ void OrreryProcessor::applyParams() {
     clockCfg_ = cfg;
 
     router_.quantizeOut = *p_.quantizeOut;
+    router_.globalTranspose = static_cast<int>(*p_.transpose);
 
     // Note map: spread (melodic minor-third cycle) vs mono (one pitch — hear
     // the offset layer's transposes in isolation). Synced on change only.

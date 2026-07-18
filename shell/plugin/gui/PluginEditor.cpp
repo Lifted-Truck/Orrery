@@ -14,9 +14,10 @@ namespace {
 std::vector<ParamRail::Row> commonTail() {
     return {
         { "",            "", "", 0 },
-        { "quantizeOut", "quantize", "",   2 },
-        { "gateMs",      "gate",     "ms", -1 },
-        { "gain",        "gain",     "",   2 },
+        { "quantizeOut", "quantize",  "",   2 },
+        { "gateMs",      "gate",      "ms", -1 },
+        { "transpose",   "transpose", "st", -1 },
+        { "gain",        "gain",      "",   2 },
         { "",            "VOICE",    "",   0 },
         { "voiceTune",     "tune",      "st", -1 },
         { "voiceDecay",    "decay",     "ms", -1 },

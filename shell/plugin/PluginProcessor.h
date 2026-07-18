@@ -139,6 +139,7 @@ private:
         std::atomic<float>* voiceDrop = nullptr;
         std::atomic<float>* engineSelect = nullptr;
         std::atomic<float>* noteSpread = nullptr;
+        std::atomic<float>* transpose = nullptr;
     } p_;
     bool lastSpread_ = true;   // note-map sync (router default is spread)
     // 1024: curve painting streams one CurveEdit per touched bin — a fast swipe

@@ -23,6 +23,10 @@ public:
     int    gateSamples     = 0;      // 0 = host/adapter default
     float  quantizeOut     = 0.0f;   // 0..1 blend toward the quantize grid
     int    quantizeGrid    = 16;     // grid divisions per lap for quantizeOut
+    // Global output transpose (semitones), applied AFTER the note map and the
+    // offset layer — shifts the whole instrument to a target register (e.g.
+    // down to a sampler's drum-pad range) without touching per-source offsets.
+    int    globalTranspose = 0;      // -48..+48
 
     // engineBaseNote per sourceId (§2.4). Default: stacked chromatic spread.
     void setNoteMapEntry(int32_t sourceId, int note);

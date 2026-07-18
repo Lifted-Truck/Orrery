@@ -34,6 +34,9 @@ double MidiRouter::quantizePhase(double barPhase) const {
 MidiNote MidiRouter::route(const TriggerEvent& ev, const OffsetCell& cell) const {
     int pitch = 0, vel = 0;
     OffsetLayer::resolve(cell, noteMap_[ev.sourceId], baseVelocity, pitch, vel);
+    pitch = pitch + globalTranspose;
+    if (pitch < 0) pitch = 0;
+    if (pitch > 127) pitch = 127;
 
     MidiNote n;
     n.channel     = outChannel;
