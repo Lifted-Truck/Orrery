@@ -288,3 +288,23 @@ history; supersede with a new numbered entry.
     SUCCEEDED (aumu + aumi); RT gate green. Rejected: converting Orrery to a
     MIDI effect (loses internal audio, the user's monitoring path); one plugin
     switching modes at runtime (not how host slotting works).
+
+20. **Two crash-class bugs: UTF-8-into-`juce::String(const char*)`, and shipping
+    Debug builds to a host** (2026-07-13, user: "the midi VST … errors or
+    crashes"). Root cause found with `pluginval` (strictness 8): `JUCE Assertion
+    failure in juce_String.cpp:327` — building a `juce::String` from a `const
+    char*` literal containing bytes > 127 (the UI's `·`, `Δ`, `✓`, `—`). The
+    `const char*` ctor treats the bytes as Latin-1 and asserts. **And** the
+    installed plugins were DEBUG builds, where a fired `jassert` executes a
+    debug-trap (SIGTRAP) → the host kills the plugin. The instrument dodged it
+    (its user path never built the offending String); the MFX editor path did →
+    crash. Fixes: (a) all UI separators/symbols are ASCII, and the two kept
+    glyphs (Δ, ✓) are built via `juce::String::fromUTF8(...)`, never the
+    `const char*` ctor — a boundary rule for every future view; (b) **distribute
+    RELEASE builds** — Debug plugins must never go to a host (assertions
+    debug-trap; also unoptimized + leak-detected). `build-release/` (Release)
+    is now the install source; `build-plugin/` (Debug) stays for pluginval's
+    assertion coverage. Verified: pluginval SUCCESS with zero assertions on the
+    Release MFX; auval SUCCEEDED (aumu + aumi); RT no-alloc green in Release.
+    Rejected: keeping the glyphs via the `const char*` ctor (the bug); shipping
+    Debug "because it worked for the instrument" (it worked by luck).

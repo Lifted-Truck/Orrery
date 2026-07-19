@@ -132,18 +132,22 @@ void ElasticView::paint(juce::Graphics& g) {
     // Center glyph + bottom readout + legend (all mono, prototype voice).
     g.setFont(theme::mono(9.0f));
     g.setColour(theme::dim.withAlpha(0.6f));
-    g.drawText("k " + juce::String(k) + " · n " + juce::String(n),
+    g.drawText("k " + juce::String(k) + "  |  n " + juce::String(n),
                (int)cx - 40, (int)cy - 6, 80, 12, juce::Justification::centred);
 
     g.setFont(theme::mono(11.0f));
     const bool settled = rms_ < 0.004;
+    // Δ and ✓ are multi-byte UTF-8 — build via fromUTF8, never the const char*
+    // ctor (which treats bytes>127 as Latin-1 and asserts/crashes; see #20).
     juce::String left = "gen " + juce::String(snap_.gen).paddedLeft('0', 3)
-                      + "    " + juce::String::formatted(u8"Δ %.1f%%", rms_ * 100.0);
+                      + "    " + juce::String::fromUTF8("\xce\x94 ")   // Δ
+                      + juce::String(rms_ * 100.0, 1) + "%";
     g.setColour(theme::dim);
     g.drawText(left, theme::pad, getHeight() - 26, 250, 14, juce::Justification::left);
     if (settled) {
         g.setColour(theme::cyan);
-        g.drawText(u8"settled ✓", theme::pad + 160, getHeight() - 26, 90, 14, juce::Justification::left);
+        g.drawText(juce::String::fromUTF8("settled \xe2\x9c\x93"),  // ✓
+                   theme::pad + 160, getHeight() - 26, 90, 14, juce::Justification::left);
     }
     g.setColour(theme::dim);
     g.drawText("E(" + juce::String(std::min(k, n)) + "," + juce::String(n) + ")",

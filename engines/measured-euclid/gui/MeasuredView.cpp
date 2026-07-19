@@ -231,7 +231,7 @@ void MeasuredView::paint(juce::Graphics& g) {
             g.strokePath(line, juce::PathStrokeType(1.1f));
             g.setFont(theme::mono(9.5f));
             g.setColour(theme::amberDim);
-            g.drawText("edits pending — next bar", (int)L.x0 + 66, (int)L.top - 14, 200, 12,
+            g.drawText("edits pending - next bar", (int)L.x0 + 66, (int)L.top - 14, 200, 12,
                        juce::Justification::left);
         }
     }
@@ -294,11 +294,11 @@ void MeasuredView::paint(juce::Graphics& g) {
     // Readout.
     g.setFont(theme::mono(11.0f));
     g.setColour(theme::dim);
-    juce::String hint = mode_ == Mode::Bezier ? "drag points · dbl-click removes"
+    juce::String hint = mode_ == Mode::Bezier ? "drag points, dbl-click removes"
                        : mode_ == Mode::Steps ? "paint fills grid cells"
                                               : "draw the curve above";
     g.drawText("gen " + juce::String(snap_.gen).paddedLeft('0', 3)
-                   + "    k " + juce::String(k) + " · n " + juce::String(n) + " · " + hint,
+                   + "    k " + juce::String(k) + "  |  n " + juce::String(n) + "  |  " + hint,
                theme::pad, getHeight() - 24, getWidth() - 2 * theme::pad, 14,
                juce::Justification::left);
     g.setFont(theme::mono(9.5f));

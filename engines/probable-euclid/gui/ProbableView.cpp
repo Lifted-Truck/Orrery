@@ -74,7 +74,7 @@ void ProbableView::paint(juce::Graphics& g) {
     g.setFont(theme::mono(11.0f));
     g.setColour(theme::dim);
     g.drawText("gen " + juce::String(snap_.gen).paddedLeft('0', 3)
-                   + juce::String::formatted("    E[k] %.1f · realized %d", expected, realized),
+                   + juce::String::formatted("    E[k] %.1f  |  realized %d", expected, realized),
                theme::pad, getHeight() - 26, 320, 14, juce::Justification::left);
 
     g.setFont(theme::mono(9.5f));

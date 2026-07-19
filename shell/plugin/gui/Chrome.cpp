@@ -77,8 +77,8 @@ void HeaderBar::paint(juce::Graphics& g) {
     int textEnd = freeze_.getX() - 12;
     if (run_.isVisible())  textEnd = std::min(textEnd, run_.getX() - 12);
     if (tick_.isVisible()) textEnd = std::min(textEnd, tick_.getX() - 12);
-    juce::String t = juce::String(bpm_, 1) + " BPM · " + juce::String(sigN_) + "/" + juce::String(sigD_)
-                   + " · bar " + juce::String(bar_);
+    juce::String t = juce::String(bpm_, 1) + " BPM  |  " + juce::String(sigN_) + "/" + juce::String(sigD_)
+                   + "  |  bar " + juce::String(bar_);
     g.setFont(theme::mono(11.0f));
     g.setColour(theme::text);
     g.drawText(t, textEnd - 250, 0, 250, getHeight(), juce::Justification::centredRight);
@@ -178,7 +178,7 @@ RoutingBar::RoutingBar(juce::AudioProcessorValueTreeState& apvts,
     addAndMakeVisible(audioChip_);
     spreadChip_.setComponentID("chip");
     spreadChip_.setClickingTogglesState(true);
-    spreadChip_.setTooltip("note map: on = melodic spread per source (36+3·(id%5)); "
+    spreadChip_.setTooltip("note map: on = melodic spread per source (36 + 3*(id%5)); "
                            "off = one pitch for all sources (hear offsets in isolation)");
     spreadAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         apvts, "noteSpread", spreadChip_);

@@ -116,6 +116,18 @@ The visual system mirrors the engine seam. Rules that keep it mess-free:
   `PluginEditor`; the processor is untouched. Shared-for-now (refinements):
   offset layer + router + note-map are one instance across engines.
 
+**Two host-crash traps (DECISIONS #20 — enforce in every view):**
+1. **Never build a `juce::String` from a `const char*` literal with bytes > 127**
+   (`·`, `Δ`, `✓`, `—`, any UTF-8). The `const char*` ctor treats them as
+   Latin-1 and `jassert`s (juce_String.cpp:327). Use ASCII separators; for a
+   kept glyph, `juce::String::fromUTF8(...)`.
+2. **Distribute RELEASE builds only.** A Debug plugin's fired `jassert`
+   debug-traps (SIGTRAP) → the host kills it. Install from `build-release/`
+   (`-DCMAKE_BUILD_TYPE=Release`); keep a Debug `build-plugin/` for pluginval's
+   assertion coverage. Validate the shipping build with `pluginval`
+   (`/Applications/pluginval.app/…/pluginval --strictness-level 8 --validate`),
+   not just auval — it caught both of these.
+
 Build/validate (machine-local, human-run — global CLAUDE.md gotchas): the
 codesign re-seal is a CMake `POST_BUILD` (JUCE regenerates `moduleinfo.json`
 after signing → broken seal → DAW silently skips it). `auval`/install to
