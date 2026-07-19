@@ -119,10 +119,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
     return layout;
 }
 
+// A MIDI effect (OrreryMFX) has NO audio buses — it sits before an instrument
+// and only carries notes. The instrument build gets a stereo output for the
+// internal voices. (RT test: macro undefined → stereo, the audio path it tests.)
+// Static member — BusesProperties is a protected nested type of AudioProcessor.
+juce::AudioProcessor::BusesProperties OrreryProcessor::makeBuses() {
+  #if defined(JucePlugin_IsMidiEffect) && JucePlugin_IsMidiEffect
+    return {};
+  #else
+    return BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true);
+  #endif
+}
+
 OrreryProcessor::OrreryProcessor()
-    : AudioProcessor(BusesProperties()
-                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+    : AudioProcessor(makeBuses()),
       apvts_(*this, nullptr, "ORRERY", createLayout()) {
+  #if defined(JucePlugin_IsMidiEffect) && JucePlugin_IsMidiEffect
+    enableVirtualMidi_ = false;   // MFX feeds the in-track instrument directly
+  #endif
     p_.gain        = apvts_.getRawParameterValue("gain");
     p_.sources     = apvts_.getRawParameterValue("sources");
     p_.rate        = apvts_.getRawParameterValue("rate");
@@ -188,8 +202,13 @@ void OrreryProcessor::releaseResources() {
 }
 
 bool OrreryProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
+  #if defined(JucePlugin_IsMidiEffect) && JucePlugin_IsMidiEffect
+    juce::ignoreUnused(layouts);
+    return true;   // MIDI effect: no audio buses to constrain
+  #else
     const auto out = layouts.getMainOutputChannelSet();
     return out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo();
+  #endif
 }
 
 void OrreryProcessor::applyParams() {
@@ -382,8 +401,9 @@ void OrreryProcessor::renderBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
 
     sweepPending(ts, midi);
     // Internal audio toggle: when off, Orrery is a silent MIDI generator (MIDI
-    // still flows on the plugin-API bus + the virtual port).
-    if (p_.internalAudio->load(std::memory_order_relaxed) > 0.5f)
+    // still flows on the plugin-API bus + the virtual port). The MFX build has
+    // no audio bus (0 channels) → skip the voices entirely.
+    if (buffer.getNumChannels() > 0 && p_.internalAudio->load(std::memory_order_relaxed) > 0.5f)
         voices_.render(buffer.getArrayOfWritePointers(), buffer.getNumChannels(), numSamples,
                        p_.gain->load(std::memory_order_relaxed));
 

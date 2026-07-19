@@ -271,3 +271,20 @@ history; supersede with a new numbered entry.
     (empirically failed within a day). Falsifier: if a future session finds
     phase status re-accreting in the manifest, this decision has rotted —
     re-trim and re-point.
+
+19. **Ship a MIDI-effect variant (Orrery MFX) alongside the instrument** (2026-
+    07-13, human — "drop it behind instruments in the Ableton rack instead of
+    routing from another track"). A plugin is EITHER an instrument OR a MIDI
+    effect per build (they occupy different slots and a MIDI effect has no audio
+    out), so one binary can't do both. Rather than convert (losing the internal
+    voices + standalone monitoring), we ship a SECOND target: `OrreryMFX`
+    (`IS_MIDI_EFFECT`, VST3 + AU `aumi`, PLUGIN_CODE `OrrM`, product "Orrery
+    MFX") that drops before an instrument in the same track (Ableton 11.1+/12
+    VST3 note-effect support) and feeds it directly — no cross-track routing.
+    Same sources for both; a compile-time `JucePlugin_IsMidiEffect` switch
+    selects an empty BusesProperties + `isMidiEffect()` true and disables the
+    (now-redundant) CoreMIDI virtual port. The CMake was refactored to an
+    `orrery_configure_plugin()` function applied to both targets. Both auval
+    SUCCEEDED (aumu + aumi); RT gate green. Rejected: converting Orrery to a
+    MIDI effect (loses internal audio, the user's monitoring path); one plugin
+    switching modes at runtime (not how host slotting works).

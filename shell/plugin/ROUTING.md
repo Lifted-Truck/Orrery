@@ -1,7 +1,19 @@
 # Orrery — MIDI + audio routing
 
-Orrery is a generative **instrument** that emits MIDI *and* renders internal
-audio. How you get its MIDI into other tracks depends on the host.
+Orrery ships as **two devices**, same engine:
+
+- **Orrery** (instrument) — renders internal audio *and* emits MIDI. Goes in a
+  track's instrument slot. Use it to hear Orrery standalone, or to drive other
+  tracks via MIDI (see routing below).
+- **Orrery MFX** (MIDI effect) — drops **before an instrument in the same
+  track** (Ableton Live 11.1+/12; AU type `aumi`). Its generated notes feed the
+  downstream instrument directly — no cross-track routing. No audio of its own
+  (the instrument after it makes the sound); the internal voices + virtual MIDI
+  port are inert in this build. This is the simplest drums/instrument workflow:
+  drop it in, drop an instrument after it, done.
+
+The routing below is for the **instrument** build (when you want its MIDI on
+another track). If you're using **Orrery MFX**, you don't need any of it.
 
 ## Two MIDI-out paths (both always active)
 

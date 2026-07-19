@@ -6,20 +6,8 @@
 
 option(ORRERY_COPY_PLUGIN "Install the plugin to the user plugin folder after build" OFF)
 
-juce_add_plugin(Orrery
-    COMPANY_NAME              "Lifted Truck"
-    PLUGIN_MANUFACTURER_CODE  Lftk
-    PLUGIN_CODE               Orry
-    FORMATS                   VST3 AU Standalone
-    PRODUCT_NAME              "Orrery"
-    IS_SYNTH                  TRUE
-    NEEDS_MIDI_INPUT          TRUE
-    NEEDS_MIDI_OUTPUT         TRUE
-    IS_MIDI_EFFECT            FALSE
-    COPY_PLUGIN_AFTER_BUILD   ${ORRERY_COPY_PLUGIN}
-    VST3_CATEGORIES           Instrument)
-
-target_sources(Orrery PRIVATE
+# Shared shell sources — compiled into every plugin variant + the RT test.
+set(ORRERY_SHELL_SOURCES
     PluginProcessor.cpp
     EngineSlot.cpp
     TraceDrain.cpp
@@ -36,41 +24,64 @@ target_sources(Orrery PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../engines/measured-euclid/gui/MeasuredView.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../engines/probable-euclid/gui/ProbableView.cpp)
 
-target_compile_definitions(Orrery PRIVATE
-    ORRERY_WITH_EDITOR=1
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0)
+# Apply the shared sources / defs / links / codesign-reseal to a plugin target.
+# Two variants share this: the instrument (Orrery) and the MIDI-effect
+# (OrreryMFX). Same code; JucePlugin_IsMidiEffect (set by juce_add_plugin)
+# switches the processor's bus config + isMidiEffect() at compile time.
+function(orrery_configure_plugin tgt)
+    target_sources(${tgt} PRIVATE ${ORRERY_SHELL_SOURCES})
+    target_compile_definitions(${tgt} PRIVATE
+        ORRERY_WITH_EDITOR=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
+    target_include_directories(${tgt} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../../engines)
+    target_link_libraries(${tgt}
+        PRIVATE orrery_elastic orrery_measured orrery_probable juce::juce_audio_utils
+        PUBLIC  juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+    # Codesign re-seal AFTER build (global CLAUDE.md gotcha): JUCE regenerates
+    # moduleinfo.json after its own ad-hoc signing, breaking the seal — a bundle
+    # with a broken seal is SILENTLY skipped by the DAW scanner.
+    if(APPLE)
+        foreach(fmt VST3 AU Standalone)
+            if(TARGET ${tgt}_${fmt})
+                add_custom_command(TARGET ${tgt}_${fmt} POST_BUILD
+                    COMMAND codesign --force -s - "$<TARGET_BUNDLE_DIR:${tgt}_${fmt}>"
+                    COMMENT "codesign re-seal ${tgt}_${fmt}" VERBATIM)
+            endif()
+        endforeach()
+    endif()
+endfunction()
 
-target_include_directories(Orrery PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../engines)   # engine views: <name>/gui/...
+# ── Instrument: internal voices + MIDI-out (cross-track routing / virtual port).
+juce_add_plugin(Orrery
+    COMPANY_NAME              "Lifted Truck"
+    PLUGIN_MANUFACTURER_CODE  Lftk
+    PLUGIN_CODE               Orry
+    FORMATS                   VST3 AU Standalone
+    PRODUCT_NAME              "Orrery"
+    IS_SYNTH                  TRUE
+    NEEDS_MIDI_INPUT          TRUE
+    NEEDS_MIDI_OUTPUT         TRUE
+    IS_MIDI_EFFECT            FALSE
+    COPY_PLUGIN_AFTER_BUILD   ${ORRERY_COPY_PLUGIN}
+    VST3_CATEGORIES           Instrument)
+orrery_configure_plugin(Orrery)
 
-target_link_libraries(Orrery
-    PRIVATE
-        orrery_elastic
-        orrery_measured
-        orrery_probable
-        juce::juce_audio_utils
-    PUBLIC
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_warning_flags)
-
-# Codesign re-seal AFTER build (global CLAUDE.md gotcha): JUCE regenerates
-# moduleinfo.json after its own ad-hoc signing, breaking the seal — a bundle
-# with a broken seal is SILENTLY skipped by the DAW scanner. Re-sign every
-# format bundle so each build is loadable. (Run the build with the sandbox
-# disabled so codesign hits real disk, per the same gotcha.)
-if(APPLE)
-    foreach(fmt VST3 AU Standalone)
-        if(TARGET Orrery_${fmt})
-            add_custom_command(TARGET Orrery_${fmt} POST_BUILD
-                COMMAND codesign --force -s - "$<TARGET_BUNDLE_DIR:Orrery_${fmt}>"
-                COMMENT "codesign re-seal Orrery_${fmt}"
-                VERBATIM)
-        endif()
-    endforeach()
-endif()
+# ── MIDI effect: drops BEFORE an instrument in the same track (Ableton 11.1+).
+# No audio output — the downstream instrument sounds; the internal voices and
+# the virtual CoreMIDI port are inert here (feeds the in-track instrument
+# directly). Distinct PLUGIN_CODE so hosts see it as a separate device.
+juce_add_plugin(OrreryMFX
+    COMPANY_NAME              "Lifted Truck"
+    PLUGIN_MANUFACTURER_CODE  Lftk
+    PLUGIN_CODE               OrrM
+    FORMATS                   VST3 AU
+    PRODUCT_NAME              "Orrery MFX"
+    IS_SYNTH                  FALSE
+    NEEDS_MIDI_INPUT          TRUE
+    NEEDS_MIDI_OUTPUT         TRUE
+    IS_MIDI_EFFECT            TRUE
+    COPY_PLUGIN_AFTER_BUILD   ${ORRERY_COPY_PLUGIN})
+orrery_configure_plugin(OrreryMFX)
 
 # ── O1b RT-safety gate: headless console app driving renderBlock ─────────────
 juce_add_console_app(orrery_rt_test PRODUCT_NAME orrery_rt_test)
@@ -79,7 +90,7 @@ target_sources(orrery_rt_test PRIVATE
     PluginProcessor.cpp
     EngineSlot.cpp
     TraceDrain.cpp
-    MidiOut.cpp)
+    MidiOut.cpp)   # not the GUI/views — the RT test is headless (instrument path)
 target_compile_definitions(orrery_rt_test PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0)

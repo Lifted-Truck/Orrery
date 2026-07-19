@@ -49,8 +49,14 @@ sprawls:
   out — plugin-API event bus (Reaper/Bitwig/…) + a self-opened CoreMIDI virtual
   source "Orrery" (the Ableton path; Live can't route plugin-API MIDI). RT-safe
   ring→drain send. `internalAudio` toggle makes it a silent MIDI generator or an
-  audible instrument. `shell/plugin/ROUTING.md`; DECISIONS #15. *Follow-up: a
-  Logic `aumi` MIDI-processor build; per-instance port naming.*
+  audible instrument. `shell/plugin/ROUTING.md`; DECISIONS #15.
+- **O1d — MIDI-effect variant (Orrery MFX).** ✅ **DONE 2026-07-13** (DECISIONS
+  #19). A second plugin target built as a MIDI effect (`IS_MIDI_EFFECT`, VST3 +
+  AU `aumi`, PLUGIN_CODE OrrM) that drops before an instrument in the same
+  Ableton track — no cross-track routing. Shares all sources; a compile-time
+  `JucePlugin_IsMidiEffect` switch drops the audio bus + the virtual port. Both
+  auval SUCCEEDED. *Follow-up: hide the inert internal-audio chip in the MFX
+  editor.*
 - **O1b — Plugin wrapper + RT gate.** ✅ **DONE 2026-07-13.** `shell/plugin/`
   wraps `orrery_core` in a JUCE 8.0.14 VST3/AU/Standalone instrument:
   AudioPlayHead→TransportState adapter, `renderBlock` seam, mini-scheduler

@@ -55,7 +55,15 @@ public:
     const juce::String getName() const override { return "Orrery"; }
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return true; }
-    bool isMidiEffect() const override { return false; }
+    // True in the OrreryMFX build (juce_add_plugin sets JucePlugin_IsMidiEffect);
+    // false in the instrument build and the headless RT test (macro undefined).
+    bool isMidiEffect() const override {
+      #if defined(JucePlugin_IsMidiEffect)
+        return JucePlugin_IsMidiEffect != 0;
+      #else
+        return false;
+      #endif
+    }
     double getTailLengthSeconds() const override { return 0.0; }
 
     int getNumPrograms() override { return 1; }
@@ -86,6 +94,7 @@ public:
     int vizSources() const { return kViz_.load(std::memory_order_relaxed); }
 
 private:
+    static BusesProperties makeBuses();       // MFX = no audio bus; else stereo
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     void applyParams();                       // APVTS → core config (audio thread)
     // schedule=false → evolve/decorate/trace only (manual TICK while stopped —
