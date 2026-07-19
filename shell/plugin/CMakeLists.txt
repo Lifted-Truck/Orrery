@@ -7,7 +7,7 @@
 option(ORRERY_COPY_PLUGIN "Install the plugin to the user plugin folder after build" OFF)
 
 juce_add_plugin(Orrery
-    COMPANY_NAME              "LiftedTruck"
+    COMPANY_NAME              "Lifted Truck"
     PLUGIN_MANUFACTURER_CODE  Lftk
     PLUGIN_CODE               Orry
     FORMATS                   VST3 AU Standalone
