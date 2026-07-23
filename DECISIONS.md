@@ -308,3 +308,21 @@ history; supersede with a new numbered entry.
     Release MFX; auval SUCCEEDED (aumu + aumi); RT no-alloc green in Release.
     Rejected: keeping the glyphs via the `const char*` ctor (the bug); shipping
     Debug "because it worked for the instrument" (it worked by luck).
+
+21. **CORRECTION to #19: Ableton cannot host Orrery MFX as a chain MIDI effect —
+    no plugin can generate notes before an instrument in Live** (2026-07-13,
+    user: "it's trying to load as an audio effect"). Verified against Ableton's
+    own manual (Live 12 *MIDI Tools* / *Working with Instruments and Effects*):
+    standard plugin formats (VST3/AU/CLAP) CANNOT generate notes as chain MIDI
+    effects — that slot is Live's built-in MIDI effects + Max for Live (AMXD)
+    only. Live 12 "MIDI Tools" are OFFLINE clip Generators/Transformers in the
+    AMXD format, not real-time plugins. Live does not support CLAP at all. So
+    #19's "drops before an instrument in Ableton" was WRONG (my error, twice —
+    the VST3-MFX idea and the CLAP idea, both un-verified). Orrery MFX is still
+    valid + useful in hosts that DO support plugin MIDI effects in the chain
+    (Reaper, Bitwig, Cubase, Studio One) — kept, docs corrected (ROUTING.md).
+    The Ableton in-track workflow requires either the instrument build + routing
+    (O1c, native but cross-track / virtual-port) or a **Max for Live wrapper**
+    device (M4L can host a VST and pass its MIDI to the chain; needs Live Suite)
+    — an open option, not yet chosen. Lesson: verify host format support against
+    the vendor's own docs BEFORE building a variant on the assumption.

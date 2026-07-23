@@ -5,15 +5,21 @@ Orrery ships as **two devices**, same engine:
 - **Orrery** (instrument) — renders internal audio *and* emits MIDI. Goes in a
   track's instrument slot. Use it to hear Orrery standalone, or to drive other
   tracks via MIDI (see routing below).
-- **Orrery MFX** (MIDI effect) — drops **before an instrument in the same
-  track** (Ableton Live 11.1+/12; AU type `aumi`). Its generated notes feed the
-  downstream instrument directly — no cross-track routing. No audio of its own
-  (the instrument after it makes the sound); the internal voices + virtual MIDI
-  port are inert in this build. This is the simplest drums/instrument workflow:
-  drop it in, drop an instrument after it, done.
+- **Orrery MFX** (MIDI effect, VST3 + AU `aumi`) — drops **before an instrument
+  in the same track** and feeds it directly, *in hosts that support plugin MIDI
+  effects in the device chain*: **Reaper, Bitwig, Cubase, Studio One**. No audio
+  of its own; the internal voices + virtual port are inert here.
 
-The routing below is for the **instrument** build (when you want its MIDI on
-another track). If you're using **Orrery MFX**, you don't need any of it.
+  > **NOT Ableton Live.** Live does **not** host any third-party plugin (VST3 /
+  > AU / CLAP) as a chain MIDI effect — that slot is reserved for Live's own
+  > MIDI effects and Max for Live devices (Ableton manual, *Working with
+  > Instruments and Effects* / *MIDI Tools*). Live categorizes Orrery MFX as an
+  > audio effect (so it lands *after* an instrument, useless there). Live 12
+  > "MIDI Tools" are a different, offline, AMXD-only format. For Ableton, use
+  > the **instrument build + routing** below, or a **Max for Live wrapper**.
+
+The routing below is for the **instrument** build (its MIDI on another track),
+and is the Ableton path.
 
 ## Two MIDI-out paths (both always active)
 
