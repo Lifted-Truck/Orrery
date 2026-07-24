@@ -326,3 +326,23 @@ history; supersede with a new numbered entry.
     device (M4L can host a VST and pass its MIDI to the chain; needs Live Suite)
     — an open option, not yet chosen. Lesson: verify host format support against
     the vendor's own docs BEFORE building a variant on the assumption.
+
+22. **Orrery becomes the PROVIDER of the shared sequencer substrate; Lathe is
+    its first consumer** (2026-07-23, human via Lathe L0 ratification; brief
+    `lathe-2026-07-23-001` in `integrations/lathe/`). Response summary:
+    mechanism = FetchContent pin to tag **`core-v0.1.0`** (tagged with this
+    change; a neutral `sequencer-core` repo is deferred until a 3rd consumer);
+    contract **v1.1** accepted = `ITickEngine` clocking variant designed
+    together with Kuramoto's free-transport variant (#8) + `TickEvent`
+    (`ringId/tick/vel/ghost/overshootFrac`) + a TOL TIMING lane (sub-tick:
+    static offset, swing, `tolAmount·overshootFrac`) under the existing
+    pins-and-flow coexistence rule; conductor bus accepted as a phased
+    station-level shared service generalizing contract §7; RNG counter-design =
+    NO contract change (engines own their streams; LATHE keeps mulberry32
+    internally, port-pin preserved — precedent: our engines already derive
+    their own). Scheduled as ROADMAP **O-share**. Constraint accepted with the
+    role: contract changes now affect a consumer — v1.1 design happens once,
+    deliberately, provider-side, with Lathe's contract tests in the gate.
+    Rejected: extracting a shared repo now (overhead at 2 consumers, both
+    local); forcing LATHE through the latch seam (breaks T=0 fidelity + the
+    sub-tick groove — Lathe DECISIONS #12's Procrustean warning).

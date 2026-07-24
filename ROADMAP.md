@@ -124,6 +124,18 @@ sprawls:
 
 ### Cross-cutting
 
+- **O-share — Shared-substrate provider work (Lathe is consumer #1).** Accepted
+  2026-07-23 (DECISIONS #22; brief `lathe-2026-07-23-001` + response in
+  `integrations/lathe/`). Tagged **`core-v0.1.0`** for Lathe's FetchContent pin.
+  Scheduled provider-side, in order: **(a) contract v1.1** — `ITickEngine`
+  clocking variant (designed together with Kuramoto's `IFreeTransportEngine`,
+  #8) + `TickEvent` POD + TOL timing lane (sub-tick: offset/swing/
+  `tolAmount·overshootFrac`, pins-and-flow rules); **(b) conductor bus** —
+  station-level shared modulation service generalizing contract §7 (design doc
+  before code). *Gate: v1.1 lands with Lathe's offered contract tests green in
+  Lathe's gates (T=0 fidelity through the seam, port-pin bit-identity, TOL
+  lane grid-exact at 0); a `notice.md` closes the exchange.* Lathe is not
+  blocked meanwhile (proceeds degraded against `core-v0.1.0`).
 - **O-int — Tonality integration.** Boundary module for the scaleQuant/pitch
   JSON contract; pin the version; degrade visibly (static note map fallback
   when Tonality absent). Blocks the `scaleQuant` generator only. See
