@@ -327,6 +327,26 @@ history; supersede with a new numbered entry.
     — an open option, not yet chosen. Lesson: verify host format support against
     the vendor's own docs BEFORE building a variant on the assumption.
 
+    **CLOSED 2026-07-29 with empirical proof + a disposition** (user: "the MFX is
+    still registering as an audio plugin"). Live 12.4.5b8's own `Log.txt` settles
+    it: `plugin processor successfully loaded: 'Orrery MFX'` immediately followed
+    by `error: VST3: Failed: Orrery MFX`, while the instrument build logs
+    `Created: Orrery`. Live loads the MFX processor then REFUSES to instantiate
+    the device, because the MFX exposes zero audio buses and Live has no
+    third-party MIDI-device role to put it in. Not a misclassification that could
+    be fixed by a category/type string — a structural mismatch. The plugin is
+    correct (AU type `aumi`, auval SUCCEEDED, pluginval clean, 0-in/0-out by
+    design). **Disposition (human, 2026-07-29): the MFX target stays in the build
+    but is NOT installed to `~/Library`** — an entry that fails to load is worse
+    than no entry. Installed bundles removed; install only on machines using a
+    supported host (Reaper/Bitwig/Cubase/Studio One, or Logic's MIDI FX slot via
+    the `aumi` AU). Ableton's paths remain (a) the instrument build + its virtual
+    "Orrery" port — already enabled in the user's MIDI prefs
+    (`MidiInDevice [Name="Orrery", Track=true]`) — or (b) a Max for Live wrapper
+    (`vst~`/`plugin~` can host a plugin and tap its MIDI into the chain; needs
+    Suite). Evidence and the no-install rule are recorded in
+    `shell/plugin/ROUTING.md` so this is not re-litigated.
+
 22. **Orrery becomes the PROVIDER of the shared sequencer substrate; Lathe is
     its first consumer** (2026-07-23, human via Lathe L0 ratification; brief
     `lathe-2026-07-23-001` in `integrations/lathe/`). Response summary:

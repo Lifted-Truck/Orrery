@@ -52,11 +52,16 @@ sprawls:
   audible instrument. `shell/plugin/ROUTING.md`; DECISIONS #15.
 - **O1d — MIDI-effect variant (Orrery MFX).** ✅ **DONE 2026-07-13** (DECISIONS
   #19). A second plugin target built as a MIDI effect (`IS_MIDI_EFFECT`, VST3 +
-  AU `aumi`, PLUGIN_CODE OrrM) that drops before an instrument in the same
-  Ableton track — no cross-track routing. Shares all sources; a compile-time
-  `JucePlugin_IsMidiEffect` switch drops the audio bus + the virtual port. Both
-  auval SUCCEEDED. *Follow-up: hide the inert internal-audio chip in the MFX
-  editor.*
+  AU `aumi`, PLUGIN_CODE OrrM) that drops before an instrument in the same track.
+  Shares all sources; a compile-time `JucePlugin_IsMidiEffect` switch drops the
+  audio bus + the virtual port. Both auval SUCCEEDED.
+  **⚠️ Ableton-incompatible (verified 2026-07-29, DECISIONS #21 closure):** Live
+  has no third-party MIDI-device role and REFUSES to instantiate a 0-audio-bus
+  plugin (`error: VST3: Failed: Orrery MFX` in Live's log). MFX is therefore
+  **built but not installed** by default; it targets Reaper/Bitwig/Cubase/
+  Studio One + Logic MIDI FX. Ableton uses the instrument build + virtual port
+  (O1c) or a Max for Live wrapper. *Follow-up: hide the inert internal-audio
+  chip in the MFX editor.*
 - **O1b — Plugin wrapper + RT gate.** ✅ **DONE 2026-07-13.** `shell/plugin/`
   wraps `orrery_core` in a JUCE 8.0.14 VST3/AU/Standalone instrument:
   AudioPlayHead→TransportState adapter, `renderBlock` seam, mini-scheduler

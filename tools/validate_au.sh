@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # validate_au.sh — install the built AU and run auval (the O1b human-run gate).
 #
+# INSTRUMENT ONLY, on purpose. The `Orrery MFX` (MIDI-effect) variant is built
+# but deliberately NOT installed: Ableton Live has no third-party MIDI-device
+# role and refuses to instantiate its 0-audio-bus plugin, so an installed MFX
+# shows up as an audio effect that fails to load (DECISIONS #21 closure;
+# evidence in shell/plugin/ROUTING.md). Install MFX by hand ONLY on a machine
+# using Reaper/Bitwig/Cubase/Studio One, or Logic's MIDI FX slot.
+#
 # Machine-local + sandbox-sensitive (global CLAUDE.md build gotchas): writes to
 # ~/Library, and codesign/auval/killall hit a sandbox overlay unless run for
 # real. Run this in a normal terminal (NOT inside a sandboxed agent step).

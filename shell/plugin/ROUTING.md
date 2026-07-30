@@ -7,16 +7,40 @@ Orrery ships as **two devices**, same engine:
   tracks via MIDI (see routing below).
 - **Orrery MFX** (MIDI effect, VST3 + AU `aumi`) — drops **before an instrument
   in the same track** and feeds it directly, *in hosts that support plugin MIDI
-  effects in the device chain*: **Reaper, Bitwig, Cubase, Studio One**. No audio
-  of its own; the internal voices + virtual port are inert here.
+  effects in the device chain*: **Reaper, Bitwig, Cubase, Studio One** (and
+  Logic's MIDI FX slot, via the `aumi` AU). No audio of its own; the internal
+  voices + virtual port are inert here. **Built but NOT installed by default —
+  see below.**
 
-  > **NOT Ableton Live.** Live does **not** host any third-party plugin (VST3 /
-  > AU / CLAP) as a chain MIDI effect — that slot is reserved for Live's own
-  > MIDI effects and Max for Live devices (Ableton manual, *Working with
-  > Instruments and Effects* / *MIDI Tools*). Live categorizes Orrery MFX as an
-  > audio effect (so it lands *after* an instrument, useless there). Live 12
-  > "MIDI Tools" are a different, offline, AMXD-only format. For Ableton, use
-  > the **instrument build + routing** below, or a **Max for Live wrapper**.
+  > ### Orrery MFX does not work in Ableton Live. Verified, not assumed.
+  > Live recognizes exactly **two** plugin roles — *instrument* (MIDI in → audio
+  > out) and *audio effect* (audio in → audio out). There is **no third-party
+  > MIDI-device role**: that slot is reserved for Live's own MIDI effects and Max
+  > for Live devices (Ableton manual, *Working with Instruments and Effects*).
+  > Live 12's "MIDI Tools" are a different thing again — offline clip
+  > generators/transformers in Ableton's AMXD format, not real-time plugins. Live
+  > does not support CLAP at all.
+  >
+  > **Empirical confirmation** (Live 12.4.5b8 `Log.txt`, 2026-07-29):
+  > ```
+  > info:  VST3: plugin processor successfully loaded: 'Orrery MFX' v0.1.0
+  > error: VST3: Failed: Orrery MFX          ← Live refuses to instantiate
+  > ...
+  > info:  VST3: Created: Orrery             ← the instrument build succeeds
+  > ```
+  > Live loads the processor, then fails to create the device, because the MFX
+  > deliberately exposes **zero audio buses**. This is a structural mismatch, not
+  > a declaration bug — no `VST3_CATEGORIES`/type change fixes it. The plugin
+  > itself is valid (auval `aumi` SUCCEEDED, pluginval clean).
+  >
+  > **Therefore the MFX bundles are deliberately NOT installed to `~/Library`**
+  > (it would appear in Live's browser as an audio effect that fails to load).
+  > Install it only on a machine using a host from the supported list above.
+  >
+  > **For Ableton, use the instrument build + routing below** (its virtual
+  > "Orrery" port is the intended path), or a **Max for Live wrapper** — M4L's
+  > `vst~`/`plugin~` can host a plugin *and* tap its MIDI output into the track's
+  > chain (needs Live Suite; existing third-party wrapper devices do this).
 
 The routing below is for the **instrument** build (its MIDI on another track),
 and is the Ableton path.
