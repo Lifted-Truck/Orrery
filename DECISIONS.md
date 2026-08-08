@@ -347,6 +347,33 @@ history; supersede with a new numbered entry.
     Suite). Evidence and the no-install rule are recorded in
     `shell/plugin/ROUTING.md` so this is not re-litigated.
 
+23. **NOTICE — passive standby for the `plugin-skeleton` shared library**
+    (2026-07-29, notice received). A shared infrastructure library is being
+    founded; its FOUNDATIONS document will define contracts this project may
+    eventually consume (parameter registry, mod routing, scoped presets, event
+    pipeline, payload interfaces). Integration is phased, and a **mediator agent
+    in the library repo initiates a brief→response dialogue** when Orrery becomes
+    the active correspondent. **Until then Orrery is on PASSIVE STANDBY.**
+    *Explicitly NOT doing:* refactoring toward the library, adopting
+    not-yet-existing interfaces, extracting shared code, or any speculative
+    preparation. Doctrine unchanged — writes stay home; the ROADMAP continues
+    as-is (O-share for Lathe, O4+ engines, O5 generators).
+    *Passive habits adopted during work already planned:* (1) prefer stable,
+    hierarchical parameter addresses and record any old→new rename in
+    `INTEGRATION-STANDBY.md` (none to date — additions only); (2) no NEW
+    singletons/global state in components that could plausibly be per-voice or
+    per-module elsewhere — note that the **existing** shared OffsetLayer/router/
+    note-map across engines (#17) is precisely this smell and is already logged
+    as the next refinement, not a new one; (3) keep engine/DSP internals behind
+    the framework-free `shell/core` boundary (enforced by the core-boundary gate)
+    — GUI and host code reach model state only via POD snapshots + SPSC queues.
+    *Artifact:* `INTEGRATION-STANDBY.md` — running friction list, inventory of
+    reusable components, and a sketch of the current parameter + modulation
+    architecture. Kept cheap and current; it becomes the first brief when the
+    mediator calls. Note Orrery is *already* a provider (Lathe consumes
+    `shell/core` @ `core-v0.1.0`, #22), so that inventory is battle-tested, and
+    any library adoption must not silently break that pin.
+
 22. **Orrery becomes the PROVIDER of the shared sequencer substrate; Lathe is
     its first consumer** (2026-07-23, human via Lathe L0 ratification; brief
     `lathe-2026-07-23-001` in `integrations/lathe/`). Response summary:
