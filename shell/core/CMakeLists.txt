@@ -22,6 +22,10 @@ set(ORRERY_CORE_TESTS
     test_trace_roundtrip
     test_stub_engine
     test_determinism
+    # Contract v1.1 — includes Lathe's consumer-proposed contract tests
+    # (brief lathe-2026-07-23-001), landed here per INTEGRATIONS §3 so a
+    # provider-side regression fails THIS build.
+    test_contract_v11
 )
 foreach(t ${ORRERY_CORE_TESTS})
     add_executable(${t} tests/${t}.cpp)

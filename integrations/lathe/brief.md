@@ -1,7 +1,7 @@
 ---
 id: lathe-2026-07-23-001
-status: responded            # filed → responded (same-day; see response.md)
-ball: consumer               # provider answered; consumer ratifies (Lathe DECISIONS #14)
+status: shipped              # filed → responded → shipped (see notice.md)
+ball: consumer               # v1.1 shipped @ core-v1.1.0 — consumer integrates + closes
 filed: 2026-07-23
 respond-by: 2026-07-30
 ---

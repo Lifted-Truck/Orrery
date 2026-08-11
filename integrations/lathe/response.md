@@ -1,7 +1,7 @@
 ---
 id: lathe-2026-07-23-001
-status: responded
-ball: consumer               # Lathe ratifies or refines (fold into its ROADMAP/DECISIONS)
+status: shipped
+ball: consumer               # ratified (Lathe #14); v1.1 now shipped — see notice.md
 responded: 2026-07-23
 ---
 

@@ -113,8 +113,11 @@ sprawls:
     layer; n=64 needs an offset-capacity contract change — filed).
   - **torus-euclid** — standard IEngine; ready, BUT its pitch output waits on
     the pitch/note-map contract note (DECISIONS #9). Rhythm layout unblocked.
-  - **kuramoto-rotors** — **BLOCKED on a contract change**: needs
-    `IFreeTransportEngine` added to the contract §5 first (DECISIONS #8).
+  - **kuramoto-rotors** — ✅ **UNBLOCKED 2026-07-29**: `IFreeTransportEngine` +
+    `FreeEvent` shipped in contract v1.1 (§1.1b, tag `core-v1.1.0`,
+    DECISIONS #24) — the variant was designed together with Lathe's tick variant
+    precisely so this engine's blocker (#8) closed in the same event. Ready to
+    build against the spec; no contract work remains.
   - **coupled-rings** — **BLOCKED on spec**: O4a writes
     `engines/coupled-rings/coupled-rings-spec.md` from the prototype
     (human-reviewed) before build.
@@ -132,15 +135,16 @@ sprawls:
 - **O-share — Shared-substrate provider work (Lathe is consumer #1).** Accepted
   2026-07-23 (DECISIONS #22; brief `lathe-2026-07-23-001` + response in
   `integrations/lathe/`). Tagged **`core-v0.1.0`** for Lathe's FetchContent pin.
-  Scheduled provider-side, in order: **(a) contract v1.1** — `ITickEngine`
-  clocking variant (designed together with Kuramoto's `IFreeTransportEngine`,
-  #8) + `TickEvent` POD + TOL timing lane (sub-tick: offset/swing/
-  `tolAmount·overshootFrac`, pins-and-flow rules); **(b) conductor bus** —
-  station-level shared modulation service generalizing contract §7 (design doc
-  before code). *Gate: v1.1 lands with Lathe's offered contract tests green in
-  Lathe's gates (T=0 fidelity through the seam, port-pin bit-identity, TOL
-  lane grid-exact at 0); a `notice.md` closes the exchange.* Lathe is not
-  blocked meanwhile (proceeds degraded against `core-v0.1.0`).
+  **(a) Contract v1.1 — ✅ SHIPPED 2026-07-29, tag `core-v1.1.0`**
+  (DECISIONS #24; `integrations/lathe/notice.md`, ball → consumer):
+  `ITickEngine` + `TickEvent`, `IFreeTransportEngine` + `FreeEvent` (same design
+  event — **this also unblocks Kuramoto, #8**), and the §2.5 TOL timing lane
+  (offset/swing/`tolAmount·overshootFrac`, pins-and-flow). Purely additive —
+  latch seam untouched, `tolAmount` defaults to grid-exact. Lathe's offered
+  contract tests now gate THIS repo (`test_contract_v11.cpp`). 15/15 ctests, RT
+  gate green. *Exchange closes when Lathe bumps its pin and confirms green.*
+  **(b) Conductor bus** — station-level shared modulation service generalizing
+  contract §7; design doc before code. Not started; does not block Lathe's L2.
 - **O-int — Tonality integration.** Boundary module for the scaleQuant/pitch
   JSON contract; pin the version; degrade visibly (static note map fallback
   when Tonality absent). Blocks the `scaleQuant` generator only. See

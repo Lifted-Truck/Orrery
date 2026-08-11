@@ -18,6 +18,32 @@
 
 namespace orrery {
 
+// ── §2.5 TIMING lane (contract v1.1) ────────────────────────────────────────
+// The offset layer decorates WHAT plays (transpose/velocity); the timing lane
+// decorates WHEN, without touching any engine core. Composition:
+//
+//   eventTime = tickTime + tolAmount·overshootFrac·tickDur
+//                        + swing(pos) + perSourceOffset·tickDur
+//
+// tolAmount 0 ⇒ grid-exact (the engine's integer tick is honoured verbatim);
+// 1 ⇒ full dynamical micro-timing. Presentation only: it NEVER feeds back into
+// an engine, and traces keep the integer tick index alongside the offset.
+// Per-source offsets follow the SAME coexistence rule as the other cells —
+// a hand-set offset is a pin, generators flow around it.
+struct TimingCell {
+    float offset = 0.0f;   // static per-source nudge, in fractions of a tick
+    bool  lock   = false;  // hand-edit pin
+};
+
+struct TimingParams {
+    float tolAmount = 0.0f;  // [0,1] — 0 = hard grid (default: unchanged behavior)
+    float swing     = 0.0f;  // [0,1] — pushes odd positions later
+};
+
+// Swing offset for a position, in seconds. Odd positions are delayed by
+// swing·tickDur·0.5 (a 0.5 swing ≈ the classic triplet-ish feel).
+double swingOffset(int64_t pos, double swing, double tickDur);
+
 // Bounded random walk (§2.3). Advances internal per-cell state every rateBars;
 // the cell value is recomposed from that state each bar for unlocked cells.
 struct WalkParams {
@@ -66,6 +92,20 @@ public:
     const OffsetCell& cell(int32_t id) const { return cells_[id]; }
     OffsetCell&       cell(int32_t id)       { return cells_[id]; }
 
+    // ── Timing lane (v1.1) ───────────────────────────────────────────────────
+    // Hand edit pins the cell (same rule as transpose/velocity).
+    void setTimingOffset(int32_t id, float fracOfTick);
+    void unlockTiming(int32_t id)  { timing_[id].lock = false; }
+    void unlockAllTiming();
+    const TimingCell& timingCell(int32_t id) const { return timing_[id]; }
+    TimingParams&     timingParams()               { return timingParams_; }
+
+    // Full v1.1 composition. `pos` is the source's position in the current
+    // cycle (used for swing); `overshootFrac` comes from the engine's TickEvent.
+    // Returns an absolute time in the same units as tickTime/tickDur.
+    double eventTime(int32_t id, int64_t pos, double tickTime, double tickDur,
+                     float overshootFrac) const;
+
     WalkParams&   walk()   { return walk_; }
     AccentParams& accent() { return accent_; }
 
@@ -78,10 +118,12 @@ public:
 
 private:
     OffsetCell cells_[kMaxSources];
+    TimingCell timing_[kMaxSources];       // v1.1 timing lane
     int        walkT_[kMaxSources] = {0};  // internal walk state (transpose)
     int        walkV_[kMaxSources] = {0};  // internal walk state (velocity)
     WalkParams   walk_;
     AccentParams accent_;
+    TimingParams timingParams_;
     Pcg32        rng_;
 };
 

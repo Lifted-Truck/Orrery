@@ -1,5 +1,12 @@
 # SEQUENCER STUDIO — Shared Architecture
 
+**Contract version: v1.1** (2026-07-29). v1.0 = the latch `IEngine` only.
+v1.1 **adds** two clocking variants (§1.1b) and the TOL **timing lane** (§2.5).
+Purely additive — the latch seam is unchanged and remains the default, so every
+v1.0 engine compiles untouched. Shipped as tag `core-v1.1.0`; consumed by Lathe
+(brief `lathe-2026-07-23-001`, `integrations/lathe/`). Contract tests proposed
+by that consumer now gate THIS repo (`shell/core/tests/test_contract_v11.cpp`).
+
 **Working title:** ORRERY (a mechanical model of multiple orbital systems — rename freely).
 **Purpose:** A single VST hosting multiple generative sequencer *engines* (Elastic Euclid, Measured Euclid, Coupled Rings, and future engines) behind one transport, one trigger-decoration layer, one MIDI router, and one trace system. This document defines the contracts; engine specs (`elastic-euclid-spec.md`, `measured-euclid-spec.md`, …) define engine internals only.
 
@@ -31,6 +38,45 @@ class IEngine {
 };
 ```
 Engines never emit MIDI, never read wall-clock, never allocate in `tick()`. Fixed-capacity storage (max 32 sources per engine).
+
+### 1.1b Clocking variants (v1.1)
+
+Two engine families need to leave the latch seam for the same underlying
+reason — their musical value lives *between* latch boundaries — so they were
+designed as one event rather than two patches:
+
+```cpp
+struct TickEvent {                 // per-TICK engines (Lathe's LATHE)
+  int32 sourceId; int32 tick; float vel; bool ghost; float overshootFrac;
+};
+struct FreeEvent {                 // FREE-TRANSPORT engines (Kuramoto rotors)
+  int32 sampleOffset;              // [0, blockSize) — sample-accurate in-block
+  int32 sourceId; float energy;
+};
+
+class ITickEngine {                // one step per transport tick, fires ON ticks
+  virtual std::span<const TickEvent> tickAdvance(const TickEngineContext&) = 0;
+  /* + handleGesture / handleMidiIn / saveState / loadState / writeTrace */
+};
+class IFreeTransportEngine {       // integrates at fixed h; no tick, no latch
+  virtual std::span<const FreeEvent> advanceBlock(const FreeTransportContext&) = 0;
+  /* + the same five */
+};
+```
+
+Both carry the **identical obligations** to the latch seam — deterministic given
+(state, seed, gesture log); RT-safe advance (no alloc/lock/log/wall-clock);
+fixed capacity; never emit MIDI; `sourceId` stable per §1.2. Only the clock
+differs. `overshootFrac` is the fraction by which the engine's accumulator
+crossed its threshold and is the input to the §2.5 timing lane.
+
+**Naming:** the contract keeps `sourceId`; an engine's own vocabulary (LATHE
+says *ringId*) maps to it at that engine's boundary — the shared seam does not
+adopt one engine's terms. **RNG:** the substrate does not dictate an engine's
+generator (engines own their streams — LATHE keeps mulberry32 so its port-pin
+stays bit-exact); determinism binds at the seam, not at the RNG (DECISIONS #22).
+
+This resolves the Kuramoto blocker (DECISIONS #8) as well as Lathe's delta #1.
 
 ### 1.2 Trigger identity (`sourceId`)
 The contract that makes per-trigger offsets meaningful: each engine must define a sourceId that is **stable across generations and parameter changes short of changing k**.
@@ -74,6 +120,26 @@ pitch    = engineBaseNote(sourceId) + transpose      → scaleQuant if enabled
 velocity = clamp(baseVel + velOffset + contour(energy))
 ```
 `engineBaseNote`: per-engine editable note map (default: stacked spread as in prototypes).
+
+### 2.5 Timing lane (v1.1)
+
+The offset layer decorates *what* plays; the timing lane decorates *when* —
+without touching any engine core:
+
+```
+eventTime = tickTime + tolAmount·overshootFrac·tickDur
+                     + swing(pos) + perSourceOffset·tickDur
+```
+
+`tolAmount ∈ [0,1]`: **0 = grid-exact** (the engine's integer tick is honoured
+verbatim — the default, so v1.0 behavior is unchanged), 1 = full dynamical
+micro-timing, where entrainment push-pull becomes audible groove instead of
+being quantized away. Swing and per-source static offsets are ordinary features
+of the same stage. Per-source offsets obey the **same coexistence rule** as the
+other cells: a hand-set offset is a pin, generators flow around it (§2.2).
+
+The lane is **presentation only** — it never feeds back into an engine, and
+traces record the integer tick index *alongside* the offset.
 
 ## 3. Clock service
 

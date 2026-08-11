@@ -374,6 +374,33 @@ history; supersede with a new numbered entry.
     `shell/core` @ `core-v0.1.0`, #22), so that inventory is battle-tested, and
     any library adoption must not silently break that pin.
 
+24. **CONTRACT v1.1 SHIPPED — clocking variants + TOL timing lane; tag
+    `core-v1.1.0`** (2026-07-29, implementing the accepted deltas of brief
+    `lathe-2026-07-23-001`; notice filed, ball → consumer). **PROTECTED-PATH
+    EDIT, FLAGGED:** `sequencer-studio-architecture.md` (the contract) was
+    changed — a contract-version event, as the response declared it would be.
+    What landed: (a) `ITickEngine` + `TickEvent{sourceId,tick,vel,ghost,
+    overshootFrac}` — per-tick engines firing ON ticks; (b)
+    `IFreeTransportEngine` + `FreeEvent{sampleOffset,sourceId,energy}` —
+    designed in the SAME event, which **also unblocks our own Kuramoto engine**
+    (#8), the reason the response insisted on one design pass rather than two
+    patches; (c) the §2.5 **timing lane** on the offset layer —
+    `eventTime = tickTime + tolAmount·overshootFrac·tickDur + swing(pos) +
+    perSourceOffset·tickDur`, with `TimingCell{offset,lock}` under the existing
+    pins-and-flow rule; (d) Lathe's **consumer-proposed contract tests landed in
+    OUR CI** (`test_contract_v11.cpp`) per INTEGRATIONS §3 — their expectations
+    now fail *our* build, which is the point.
+    **Additive by construction:** the latch seam is untouched, `tolAmount`
+    defaults to 0 (grid-exact), and both variants take distinct context names
+    because the latch seam already owns `TickContext`. Verified: 15/15 core +
+    engine ctests, RT no-alloc still 0/4000, existing engines uncompiled-against.
+    Two deliberate consumer-facing frictions, documented as migration notes:
+    the contract keeps `sourceId` (Lathe's `ringId` maps at their boundary — the
+    shared seam does not adopt one engine's vocabulary), and the variant context
+    is `TickEngineContext` (renaming the latch's `TickContext` would break every
+    shipped engine). Rejected: adopting `ringId` into the contract; renaming the
+    latch context; shipping the tick variant alone and patching Kuramoto later.
+
 22. **Orrery becomes the PROVIDER of the shared sequencer substrate; Lathe is
     its first consumer** (2026-07-23, human via Lathe L0 ratification; brief
     `lathe-2026-07-23-001` in `integrations/lathe/`). Response summary:

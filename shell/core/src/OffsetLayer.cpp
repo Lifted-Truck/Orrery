@@ -8,6 +8,7 @@
 namespace orrery {
 
 static int clampi(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
+static double clampd(double v, double lo, double hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 void euclideanPattern(int accents, int k, bool* out) {
     if (k <= 0) return;
@@ -89,6 +90,33 @@ void OffsetLayer::runGenerators(int64_t gen, std::span<const int32_t> presentIds
             c.velOffset = static_cast<int8_t>(clampi(v, -64, 64));
         }
     }
+}
+
+// ── §2.5 TIMING lane (contract v1.1) ────────────────────────────────────────
+double swingOffset(int64_t pos, double swing, double tickDur) {
+    // Odd positions ride later; even ones are untouched. Guard the modulo for
+    // negative positions so a pre-roll tick doesn't invert the feel.
+    const bool odd = ((pos % 2) + 2) % 2 == 1;
+    return odd ? clampd(swing, 0.0, 1.0) * tickDur * 0.5 : 0.0;
+}
+
+void OffsetLayer::setTimingOffset(int32_t id, float fracOfTick) {
+    timing_[id].offset = static_cast<float>(clampd(fracOfTick, -1.0, 1.0));
+    timing_[id].lock = true;   // hand edit = pin (same rule as the other cells)
+}
+
+void OffsetLayer::unlockAllTiming() {
+    for (auto& t : timing_) t.lock = false;
+}
+
+double OffsetLayer::eventTime(int32_t id, int64_t pos, double tickTime,
+                              double tickDur, float overshootFrac) const {
+    const double tol = clampd(timingParams_.tolAmount, 0.0, 1.0);
+    const double os  = clampd(static_cast<double>(overshootFrac), 0.0, 1.0);
+    return tickTime
+         + tol * os * tickDur
+         + swingOffset(pos, timingParams_.swing, tickDur)
+         + static_cast<double>(timing_[id].offset) * tickDur;
 }
 
 void OffsetLayer::resolve(const OffsetCell& cell, int baseNote, int baseVel,

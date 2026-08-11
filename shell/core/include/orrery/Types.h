@@ -23,6 +23,37 @@ struct TriggerEvent {
     float   energy   = 0.0f; // [0,1] engine-defined intensity signal
 };
 
+// ── §1.1b Contract v1.1 — clocking-variant event shapes ─────────────────────
+// Two engine families need to leave the latch seam, so they were designed
+// together (brief lathe-2026-07-23-001 + DECISIONS #8):
+//
+//   TickEvent  — per-TICK engines (Lathe's LATHE): one step per transport tick,
+//                firing ON ticks. `overshootFrac` is the fraction by which the
+//                engine's accumulator crossed its threshold; it feeds the TOL
+//                TIMING lane so dynamical push-pull becomes audible groove
+//                instead of being quantized away.
+//   FreeEvent  — FREE-TRANSPORT engines (Kuramoto rotors): integrate at a fixed
+//                step and emit sample-accurate triggers per block, with no
+//                tick/latch at all. Its musical value is continuous rotation,
+//                which latching destroys.
+//
+// Both keep `sourceId` as the §1.2 stable identity (an engine's own vocabulary —
+// Lathe says "ringId" — maps to it at that engine's boundary; the shared
+// contract does not adopt one engine's naming).
+struct TickEvent {
+    int32_t sourceId      = 0;
+    int32_t tick          = 0;     // integer transport tick of the fire
+    float   vel           = 0.0f;  // [0,1]
+    bool    ghost         = false; // ornament / low-velocity flag
+    float   overshootFrac = 0.0f;  // [0,1) → TOL timing lane
+};
+
+struct FreeEvent {
+    int32_t sampleOffset = 0;      // [0, blockSize) within the current block
+    int32_t sourceId     = 0;
+    float   energy       = 0.0f;   // [0,1]
+};
+
 // ── §3 Clock configuration ──────────────────────────────────────────────────
 // Which musical division latches the engine (calls tick()).
 enum class Division { Bar, Half, Step };
