@@ -95,6 +95,10 @@ private:
 
     Pcg32 rng_;
 
+    // THIS ENGINE'S cap, from its own spec (§4: k ∈ 1..32) — deliberately NOT
+    // the substrate's kMaxSources, which rose to 64 at contract v1.2. Raising
+    // the shared ceiling must never silently widen an engine past its spec.
+    static constexpr int    kMaxParticles = 32;
     static constexpr int    kSub    = 24;     // substeps per tick (determinism)
     static constexpr double kOmegaClamp = 6.0;
     static constexpr double kEps   = 4e-4;

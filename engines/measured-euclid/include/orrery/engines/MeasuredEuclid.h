@@ -102,6 +102,9 @@ private:
 
     Pcg32 rng_;
 
+    // THIS ENGINE'S cap, from its own spec (§3: k ∈ 1..32) — NOT the substrate
+    // kMaxSources, which rose to 64 at contract v1.2.
+    static constexpr int    kMaxOnsets = 32;
     static constexpr double kWMin = 0.02;
 };
 

@@ -9,7 +9,7 @@
       { "path": "shell", "role": "host", "note": "owns the contract implementation" },
       { "path": "engines/elastic-euclid", "role": "engine", "spec": "elastic-euclid-spec.md", "prototype": "elastic-euclid-2.html", "contract": "IEngine (tick/latch)" },
       { "path": "engines/measured-euclid", "role": "engine", "spec": "measured-euclid-spec.md", "prototype": "measured-euclid.html", "contract": "IEngine (tick/latch)" },
-      { "path": "engines/probable-euclid", "role": "engine", "spec": "probable-euclid-spec.md", "prototype": "probable-euclid.html", "contract": "IEngine (tick/latch); sourceId=grid-step wants n≤64 — offset-layer capacity change filed (DECISIONS #14)" },
+      { "path": "engines/probable-euclid", "role": "engine", "spec": "probable-euclid-spec.md", "prototype": "probable-euclid.html", "contract": "IEngine (tick/latch); sourceId=grid-step, full n∈[4,64] since contract v1.2 raised kMaxSources to 64 (DECISIONS #26)" },
       { "path": "engines/torus-euclid", "role": "engine", "spec": "torus-euclid-spec.md", "prototype": "torus-euclid.html", "contract": "IEngine (tick/latch); native pitch path needs a contract note (DECISIONS #9)" },
       { "path": "engines/kuramoto-rotors", "role": "engine", "spec": "kuramoto-rotors-spec.md", "prototype": "kuramoto-rotors.html", "contract": "IFreeTransportEngine (contract v1.1 — SHIPPED, DECISIONS #24; the #8 blocker is resolved)" },
       { "path": "engines/coupled-rings", "role": "engine", "spec": null, "prototype": "coupled-rings.html", "contract": "IEngine (tick/latch)" }

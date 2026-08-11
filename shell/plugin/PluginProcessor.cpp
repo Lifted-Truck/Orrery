@@ -81,10 +81,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout OrreryProcessor::createLayou
         std::make_unique<FloatParam>(P{"m_slope", 1}, "M Slope",
             juce::NormalisableRange<float>(-1.0f, 1.0f), 0.0f),
         std::make_unique<IntParam>(P{"m_subdiv", 1}, "M Subdiv", 1, 16, 4),
-        // Probable Euclid engine (spec §3; n capped at 32, DECISIONS #14).
-        std::make_unique<IntParam>(P{"p_n", 1}, "P Grid", 4, 32, 16),
+        // Probable Euclid engine (spec §3). Full 4..64 range since contract
+        // v1.2 raised the substrate ceiling (DECISIONS #26); was capped at 32.
+        std::make_unique<IntParam>(P{"p_n", 1}, "P Grid", 4, 64, 16),
         std::make_unique<FloatParam>(P{"p_density", 1}, "P Density",
-            juce::NormalisableRange<float>(0.0f, 32.0f, 0.1f), 5.0f),
+            juce::NormalisableRange<float>(0.0f, 64.0f, 0.1f), 5.0f),
         std::make_unique<FloatParam>(P{"p_temperature", 1}, "P Temperature",
             juce::NormalisableRange<float>(0.0f, 1.0f), 0.2f),
         std::make_unique<FloatParam>(P{"p_clump", 1}, "P Clump",
@@ -509,7 +510,11 @@ void OrreryProcessor::setStateInformation(const void* data, int sizeInBytes) {
     Chunk e, m, p, off;
     if (loadChunk(vt, "elastic", e) && loadChunk(vt, "measured", m) && loadChunk(vt, "probable", p))
         slot_.loadState(e, m, p);
-    if (loadChunk(vt, "offset", off)) offset_.loadCells(off);
+    if (loadChunk(vt, "offset", off)) {
+        // v1.2: the status is explicit rather than a silent clamp. Anything but
+        // Ok/MigratedV1 means the host handed us cells we could not fully honor.
+        offsetChunkStatus_ = offset_.loadCells(off);
+    }
     // Reseed streams from the restored seed (rng stream position is not part of
     // saved state in O1b — deterministic from this reset point).
     slotRng_.seed(projectSeed_, 0);

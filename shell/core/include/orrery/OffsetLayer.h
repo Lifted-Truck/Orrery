@@ -109,9 +109,25 @@ public:
     WalkParams&   walk()   { return walk_; }
     AccentParams& accent() { return accent_; }
 
-    // State persistence (shell-level; not on the tick path).
-    void saveCells(Chunk& c) const;
-    void loadCells(const Chunk& c);
+    // ── State persistence (shell-level; not on the tick path) ────────────────
+    // v1.2: the chunk carries an EXPLICIT VERSION. Rationale (Lathe's one
+    // requirement on the kMaxSources bump, brief orrery-2026-07-29-001): the
+    // old format was `[count][cells…]` and a reader clamped to
+    // min(count, kMaxSources), so a new→old load TRUNCATED SILENTLY — dropped
+    // offset/timing cells surface as "the groove is subtly wrong", never as an
+    // error. A version lets a reader refuse or migrate LOUDLY.
+    //
+    // Layout v2: [int32 -2 (version sentinel, negative ⇒ versioned)]
+    //            [int32 count][OffsetCell × count][TimingCell × count]
+    // Legacy v1: [int32 count (positive)][OffsetCell × count]  — still readable.
+    enum class ChunkStatus {
+        Ok,            // read cleanly at the current version
+        MigratedV1,    // legacy unversioned chunk; timing cells defaulted
+        Truncated,     // chunk held MORE cells than this build can store
+        Malformed      // unusable (negative count, or an unrecognized version)
+    };
+    void        saveCells(Chunk& c) const;
+    [[nodiscard]] ChunkStatus loadCells(const Chunk& c);
 
     // A one-line JSONL trace record of the current cell state for generation g.
     void writeTrace(int64_t gen, TraceWriter& tw) const;

@@ -109,8 +109,8 @@ sprawls:
   - **probable-euclid** — ✅ **DONE 2026-07-13** (organ). §6 gates green:
     backbone recovery 522/522, determinism, freeze invariant; evenness floor +
     expected-count claims recalibrated to measured truth (DECISIONS #14).
-    **n capped at 32** (Phase-1: sourceId=step must fit the 32-cell offset
-    layer; n=64 needs an offset-capacity contract change — filed).
+    ✅ **cap lifted 2026-08-11** — full spec range n∈[4,64] since contract v1.2
+    raised `kMaxSources` to 64 (DECISIONS #26); the Phase-1 32-cap is gone.
   - **torus-euclid** — standard IEngine; ready, BUT its pitch output waits on
     the pitch/note-map contract note (DECISIONS #9). Rhythm layout unblocked.
   - **kuramoto-rotors** — ✅ **UNBLOCKED 2026-07-29**: `IFreeTransportEngine` +
@@ -143,8 +143,21 @@ sprawls:
   latch seam untouched, `tolAmount` defaults to grid-exact. Lathe's offered
   contract tests now gate THIS repo (`test_contract_v11.cpp`). 15/15 ctests, RT
   gate green. *Exchange closes when Lathe bumps its pin and confirms green.*
+  **(a2) Contract v1.2 — ✅ SHIPPED 2026-08-11, tag `core-v1.2.0`**
+  (DECISIONS #26; brief `orrery-2026-07-29-001`, `integrations/lathe/notice-002.md`):
+  `kMaxSources` 32 → 64 with the consumer's sign-off, and an explicitly
+  VERSIONED offset-cell chunk (`ChunkStatus{Ok,MigratedV1,Truncated,Malformed}`,
+  `[[nodiscard]]`) at their requirement — no silent truncation. Unblocks
+  **probable-euclid's full n∈[4,64]** (closes #14). Two hazards fixed en route:
+  elastic persisted `kMaxSources`-sized state (would have read OOB after the
+  bump — now sized by its own `kMaxParticles`), and `Chunk::get` is now
+  bounds-checked.
   **(b) Conductor bus** — station-level shared modulation service generalizing
-  contract §7; design doc before code. Not started; does not block Lathe's L2.
+  contract §7; design doc before code. **Requirements received from Lathe**
+  (sources/targets/apply-class; raw-values + deterministic-replay are hard
+  constraints). **Addressing section deferred** pending Lathe's stable-id
+  decision — designing it now would bake in their current index-addressing
+  defect. Not started; does not block Lathe's L2.
 - **O-int — Tonality integration.** Boundary module for the scaleQuant/pitch
   JSON contract; pin the version; degrade visibly (static note map fallback
   when Tonality absent). Blocks the `scaleQuant` generator only. See

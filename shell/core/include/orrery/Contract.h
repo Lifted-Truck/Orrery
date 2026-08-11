@@ -64,13 +64,20 @@ struct Chunk {
         const auto* p = reinterpret_cast<const uint8_t*>(&v);
         bytes.insert(bytes.end(), p, p + sizeof(T));
     }
+    // Bounds-checked: reading past the end yields a zeroed T instead of an
+    // out-of-bounds read. A short/truncated chunk is a real scenario (a state
+    // written by a build with different capacity constants — see the v1.2
+    // kMaxSources change), and silently walking off the buffer is the worst
+    // possible response to it.
     template <typename T>
     T get() const {
         T v{};
+        if (readPos + sizeof(T) > bytes.size()) { readPos = bytes.size(); return v; }
         std::memcpy(&v, bytes.data() + readPos, sizeof(T));
         readPos += sizeof(T);
         return v;
     }
+    bool exhausted() const { return readPos >= bytes.size(); }
     void rewind() const { readPos = 0; }
 };
 

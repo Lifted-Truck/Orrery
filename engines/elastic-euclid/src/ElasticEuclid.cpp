@@ -91,7 +91,7 @@ std::span<const TriggerEvent> ElasticEuclid::latchedEvents() const {
 }
 
 void ElasticEuclid::addParticle() {
-    if (k_ >= kMaxSources) return;
+    if (k_ >= kMaxParticles) return;
     double th;
     if (k_ == 0) {
         th = 0.0;
@@ -164,7 +164,10 @@ void ElasticEuclid::saveState(Chunk& c) const {
     c.put<int64_t>(generation_);
     c.put<uint64_t>(rng_.state);
     c.put<uint64_t>(rng_.inc);
-    for (int i = 0; i < kMaxSources; ++i) {
+    // Persist from THIS ENGINE'S cap, not the substrate ceiling: kMaxSources
+    // rose 32→64 at contract v1.2, and a chunk sized by it would have made
+    // every previously-saved state read out of bounds (v1.2 regression guard).
+    for (int i = 0; i < kMaxParticles; ++i) {
         c.put<double>(particles_[i].theta);
         c.put<double>(particles_[i].omega);
     }
@@ -182,7 +185,7 @@ void ElasticEuclid::loadState(const Chunk& c) {
     generation_ = c.get<int64_t>();
     rng_.state = c.get<uint64_t>();
     rng_.inc   = c.get<uint64_t>();
-    for (int i = 0; i < kMaxSources; ++i) {
+    for (int i = 0; i < kMaxParticles; ++i) {
         particles_[i].theta = c.get<double>();
         particles_[i].omega = c.get<double>();
     }

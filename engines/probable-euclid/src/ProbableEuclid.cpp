@@ -26,7 +26,7 @@ void ProbableEuclid::seed(uint64_t projectSeed, uint64_t stream) {
     projectSeed_ = projectSeed; stream_ = stream;
 }
 
-// Cap at 32 (Phase-1: sourceId=step-index must fit the 32-cell offset layer).
+// Full spec range now that the substrate ceiling is 64 (contract v1.2).
 void ProbableEuclid::setN(int n)          { n_ = clampi(n, 4, kMaxSources); }
 void ProbableEuclid::setDensity(double d) { density_ = clampd(d, 0.0, n_); }
 void ProbableEuclid::setTemperature(double t){ temperature_ = clampd(t, 0.0, 1.0); }

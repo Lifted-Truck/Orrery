@@ -125,15 +125,40 @@ void OffsetLayer::resolve(const OffsetCell& cell, int baseNote, int baseVel,
     velOut   = clampi(baseVel + cell.velOffset, 1, 127);
 }
 
+// v2 layout: [-2][count][OffsetCell × count][TimingCell × count].
+// The version sentinel is NEGATIVE so it can never collide with a legacy v1
+// chunk, whose first field was a positive cell count.
+static constexpr int32_t kCellChunkV2 = -2;
+
 void OffsetLayer::saveCells(Chunk& c) const {
+    c.put<int32_t>(kCellChunkV2);
     c.put<int32_t>(kMaxSources);
-    for (const auto& cell : cells_) c.put(cell);
+    for (const auto& cell : cells_)  c.put(cell);
+    for (const auto& t : timing_)    c.put(t);
 }
 
-void OffsetLayer::loadCells(const Chunk& c) {
+OffsetLayer::ChunkStatus OffsetLayer::loadCells(const Chunk& c) {
     c.rewind();
+    const int32_t head = c.get<int32_t>();
+
+    if (head >= 0) {
+        // Legacy v1: head IS the count, and there are no timing cells.
+        if (head > kMaxSources) return ChunkStatus::Truncated;
+        for (int i = 0; i < head; ++i) cells_[i] = c.get<OffsetCell>();
+        for (auto& t : timing_) t = TimingCell{};
+        return ChunkStatus::MigratedV1;
+    }
+    if (head != kCellChunkV2) return ChunkStatus::Malformed;   // unknown version
+
     const int32_t n = c.get<int32_t>();
-    for (int i = 0; i < n && i < kMaxSources; ++i) cells_[i] = c.get<OffsetCell>();
+    if (n < 0) return ChunkStatus::Malformed;
+    // MORE cells than we can hold: report rather than quietly drop the tail.
+    const bool overflow = n > kMaxSources;
+    const int  keep = overflow ? kMaxSources : n;
+    for (int i = 0; i < keep; ++i) cells_[i] = c.get<OffsetCell>();
+    for (int i = keep; i < n; ++i) (void)c.get<OffsetCell>();   // skip the tail
+    for (int i = 0; i < keep; ++i) timing_[i] = c.get<TimingCell>();
+    return overflow ? ChunkStatus::Truncated : ChunkStatus::Ok;
 }
 
 void OffsetLayer::writeTrace(int64_t gen, TraceWriter& tw) const {

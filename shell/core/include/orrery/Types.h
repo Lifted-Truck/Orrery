@@ -9,9 +9,16 @@
 
 namespace orrery {
 
-// Max sources any single engine may expose (contract §1.1: "max 32 sources per
-// engine"). Fixed capacity → RT-safe, no allocation on the tick path.
-inline constexpr int kMaxSources = 32;
+// Max sources any single engine may expose. Fixed capacity → RT-safe, no
+// allocation on the tick path.
+//
+// CONTRACT v1.2 (2026-08-11): raised 32 → 64. This is the SUBSTRATE ceiling, not
+// a per-engine budget: probable-euclid's sourceId *is* its grid step and its
+// spec wants n ≤ 64 (it was capped at 32 purely by this constant). Every engine
+// still caps itself from its OWN spec constant — raising the ceiling must never
+// silently widen an engine beyond its spec (elastic: 32 particles; measured:
+// 32 onsets). Consumer sign-off: Lathe, brief orrery-2026-07-29-001.
+inline constexpr int kMaxSources = 64;
 
 // ── §1.1 TriggerEvent ───────────────────────────────────────────────────────
 // One latched trigger emitted by an engine for the next lap. barPhase is the

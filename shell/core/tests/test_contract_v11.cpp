@@ -153,6 +153,60 @@ static void run() {
         CHECK_EQ((int)c.tickAdvance(cx).size(), (int)b.tickAdvance(cx).size());
     }
 
+    // ── v1.2: explicit chunk version, no silent truncation ──────────────────
+    // Lathe's one requirement on the kMaxSources 32→64 bump (response to
+    // orrery-2026-07-29-001): a reader must be able to refuse or migrate
+    // LOUDLY, because a silently-truncated cell set surfaces as "the groove is
+    // subtly wrong" rather than as an error.
+    {
+        // Round-trip at the current version, including timing cells.
+        OffsetLayer a;
+        a.setTranspose(5, 7);
+        a.setTimingOffset(5, 0.25f);
+        Chunk c; a.saveCells(c);
+
+        OffsetLayer b;
+        CHECK(b.loadCells(c) == OffsetLayer::ChunkStatus::Ok);
+        CHECK_EQ((int)b.cell(5).transpose, 7);
+        CHECK(b.cell(5).lockT);
+        CHECK_NEAR(b.timingCell(5).offset, 0.25f, 1e-6);
+        CHECK(b.timingCell(5).lock);          // pins survive the round trip
+
+        // A LEGACY (v1, unversioned) chunk still loads, and says so.
+        Chunk legacy;
+        legacy.put<int32_t>(kMaxSources);      // v1 began with a positive count
+        for (int i = 0; i < kMaxSources; ++i) {
+            OffsetCell cell{}; cell.transpose = (int8_t)(i % 5); legacy.put(cell);
+        }
+        OffsetLayer d;
+        CHECK(d.loadCells(legacy) == OffsetLayer::ChunkStatus::MigratedV1);
+        CHECK_EQ((int)d.cell(3).transpose, 3);
+        CHECK_NEAR(d.timingCell(3).offset, 0.0f, 1e-9);   // timing defaulted
+
+        // A chunk with MORE cells than we can hold reports Truncated — it does
+        // not quietly drop the tail.
+        Chunk big;
+        big.put<int32_t>(-2);                  // version sentinel
+        big.put<int32_t>(kMaxSources + 8);
+        for (int i = 0; i < kMaxSources + 8; ++i) big.put(OffsetCell{});
+        for (int i = 0; i < kMaxSources + 8; ++i) big.put(TimingCell{});
+        OffsetLayer e;
+        CHECK(e.loadCells(big) == OffsetLayer::ChunkStatus::Truncated);
+
+        // An unrecognized version is Malformed, not misread.
+        Chunk weird; weird.put<int32_t>(-999); weird.put<int32_t>(4);
+        OffsetLayer f;
+        CHECK(f.loadCells(weird) == OffsetLayer::ChunkStatus::Malformed);
+    }
+
+    // Chunk reads past the end are bounded (zeroed), never out-of-bounds.
+    {
+        Chunk tiny; tiny.put<int32_t>(7);
+        CHECK_EQ(tiny.get<int32_t>(), 7);
+        CHECK_EQ(tiny.get<int64_t>(), (int64_t)0);   // past the end → zeroed
+        CHECK(tiny.exhausted());
+    }
+
     // ── IFreeTransportEngine: sample-accurate offsets inside the block ───────
     {
         FreeStub f(100.0);   // 100 Hz at 48k → a wrap every 480 samples

@@ -170,6 +170,10 @@ private:
     int64_t manualGen_ = -1;
     bool    enableTraceDrain_ = true;
     bool    enableVirtualMidi_ = true;
+    // Last offset-cell chunk load result (v1.2 versioned chunk). Surfaced so a
+    // truncated/malformed restore is inspectable rather than silent.
+    orrery::OffsetLayer::ChunkStatus offsetChunkStatus_ =
+        orrery::OffsetLayer::ChunkStatus::Ok;
 
     // Internal transport: the standalone (and any host that supplies no ppq)
     // has NO transport, so isPlaying would never be true and nothing would ever

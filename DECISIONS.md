@@ -424,6 +424,43 @@ history; supersede with a new numbered entry.
     files inside two separate repos stalls invisibly. Also saved as a durable
     cross-project preference in agent memory.
 
+26. **CONTRACT v1.2 SHIPPED — `kMaxSources` 32→64 + explicitly versioned
+    offset-cell chunk; tag `core-v1.2.0`** (2026-08-11, closing brief
+    `orrery-2026-07-29-001`). **PROTECTED-PATH EDIT, FLAGGED:** the contract doc
+    changed again (v1.1 → v1.2), additively.
+    **Ask 1 — accepted by the consumer with one requirement, which was right and
+    is implemented.** Lathe asked for an explicit chunk version rather than the
+    clamp-only path, because `min(count, kMaxSources)` truncates SILENTLY and a
+    dropped offset/timing cell surfaces as "the groove is subtly wrong" rather
+    than as an error. `loadCells` now returns `[[nodiscard]] ChunkStatus
+    {Ok, MigratedV1, Truncated, Malformed}`; the v2 chunk leads with a NEGATIVE
+    version sentinel so it can never collide with a legacy positive count (v1
+    chunks migrate and say so); timing cells are persisted too.
+    **Two hazards the bump surfaced — the reason this was worth doing carefully:**
+    (i) `ElasticEuclid` persisted `kMaxSources`-sized arrays, so raising the
+    ceiling would have made every previously-saved state read OUT OF BOUNDS. Fixed
+    by sizing its chunk from the engine's own `kMaxParticles`. **Rule established:
+    engines size storage AND state from their OWN spec constants, never the
+    substrate ceiling** — measured likewise gained `kMaxOnsets`, so a wider
+    ceiling can never silently widen an engine past its spec. (ii) `Chunk::get<T>`
+    had no bounds check; a short chunk walked off the buffer. Now bounded
+    (zeroed T + `exhausted()`).
+    **Payoff:** `probable-euclid` gets its full spec range n∈[4,64], closing the
+    Phase-1 cap (#14) that had stood since O3; `p_n`/`p_density` params widened.
+    **Ask 2 — conductor-bus requirements received and accepted as binding:** raw
+    values (no normalisation/smoothing — it would break their port-pin
+    bit-exactness), per-target semantic apply-class, deterministic tick-aligned
+    replay MANDATORY, and the **addressing section deferred** pending Lathe's
+    stable-id decision (their rings are index-addressed and parallel edges are
+    unkeyed — designing around that now would bake in their defect; their call
+    was correct).
+    **Ask 3 — WITHDRAWN; the consumer's pushback was right.** Landing LATHE's
+    port-pin test in Orrery's CI would invert the dependency (a substrate
+    provider building its consumer) and redden our build for causes wholly inside
+    Lathe. Only the substrate-facing decomposition — "seam + offset layer do not
+    perturb a tick-aligned stream", expressible against a stub — comes to us.
+    Recorded permanently so it is not re-proposed.
+
 22. **Orrery becomes the PROVIDER of the shared sequencer substrate; Lathe is
     its first consumer** (2026-07-23, human via Lathe L0 ratification; brief
     `lathe-2026-07-23-001` in `integrations/lathe/`). Response summary:

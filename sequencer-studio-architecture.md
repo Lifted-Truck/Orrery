@@ -1,6 +1,11 @@
 # SEQUENCER STUDIO — Shared Architecture
 
-**Contract version: v1.1** (2026-07-29). v1.0 = the latch `IEngine` only.
+**Contract version: v1.2** (2026-08-11). v1.2 raises `kMaxSources` 32 → 64
+(the substrate ceiling — engines still cap themselves from their OWN spec
+constants) and versions the offset-cell chunk explicitly (`ChunkStatus`;
+no silent truncation), at consumer request — brief `orrery-2026-07-29-001`.
+
+**v1.1** (2026-07-29). v1.0 = the latch `IEngine` only.
 v1.1 **adds** two clocking variants (§1.1b) and the TOL **timing lane** (§2.5).
 Purely additive — the latch seam is unchanged and remains the default, so every
 v1.0 engine compiles untouched. Shipped as tag `core-v1.1.0`; consumed by Lathe

@@ -10,10 +10,10 @@
 // realization — a deterministic performance of a stochastic object. sourceId =
 // grid step index; energy = realized step's p_i (velocity-follows-probability).
 //
-// PHASE-1 CONTRACT CONSTRAINT: the spec allows n∈[4,64], but sourceId=step-index
-// must fit the offset layer's 32 cells (contract kMaxSources). n is therefore
-// capped at 32 here; reaching 64 requires widening the offset-layer capacity —
-// a gated contract change (filed, DECISIONS).
+// CAP RESOLVED (contract v1.2, 2026-08-11): the spec's full n∈[4,64] is now
+// available. sourceId=step-index needs one offset cell per step, and the
+// substrate ceiling rose 32→64 (kMaxSources) with the consumer's sign-off
+// (brief orrery-2026-07-29-001). The Phase-1 32-cap is gone.
 #pragma once
 
 #include <span>
@@ -40,7 +40,7 @@ public:
     void writeTrace(TraceWriter&) const override;
 
     // ── Parameters (spec §3) ─────────────────────────────────────────────────
-    void setN(int n);                 // grid steps (Phase-1 cap: 4..32)
+    void setN(int n);                 // grid steps (spec §3: 4..64)
     void setDensity(double d);        // 0..n continuous
     void setTemperature(double t);    // 0..1
     void setClump(double c);          // 0..1

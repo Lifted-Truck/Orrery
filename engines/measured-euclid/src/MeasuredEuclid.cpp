@@ -23,7 +23,7 @@ MeasuredEuclid::MeasuredEuclid() {
 
 void MeasuredEuclid::seed(uint64_t projectSeed, uint64_t stream) { rng_.seed(projectSeed, stream); }
 
-void MeasuredEuclid::setK(int k) { k_ = clampi(k, 1, kMaxSources); }
+void MeasuredEuclid::setK(int k) { k_ = clampi(k, 1, kMaxOnsets); }
 void MeasuredEuclid::setN(int n) { n_ = clampi(n, 1, 64); }
 void MeasuredEuclid::setPhase(double p) { phase_ = wrap(p); }
 void MeasuredEuclid::setQuantize(double q) { q_ = clampd(q, 0.0, 1.0); }
