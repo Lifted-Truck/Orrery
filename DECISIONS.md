@@ -401,6 +401,29 @@ history; supersede with a new numbered entry.
     shipped engine). Rejected: adopting `ringId` into the contract; renaming the
     latch context; shipping the tick variant alone and patching Kuramoto later.
 
+25. **Provider→consumer brief filed; INTEGRATIONS ROUNDUP becomes a standing
+    convention** (2026-07-29, human). Two parts.
+    (a) **Brief `orrery-2026-07-29-001`** filed to Lathe — the usual direction
+    reversed, because Orrery now needs *decisions from its consumer* before it
+    can change the shared core again: **Ask 1** sign-off on raising
+    `kMaxSources` 32→64 (unblocks our probable-euclid n≤64 cap, #14; it is
+    shared substrate now, so it changes Lathe's struct sizes and the
+    `saveCells` chunk layout — proposed as an additive **contract v1.2** with an
+    explicit chunk version if they persist cells); **Ask 2** conductor-bus
+    requirements (they are the richest target surface per LATHE-SPEC §12.7, and
+    the response committed to a design doc before code — we should not design it
+    from our own guesses); **Ask 3** the two contract tests they offered but
+    could not supply until L2 (T=0-through-the-seam, port-pin bit-identity),
+    to be landed in OUR CI when ready.
+    (b) **Convention:** every round that touches a cross-project exchange ends
+    with an **INTEGRATIONS ROUNDUP** — what was filed/received (with ids), what
+    the human must transport (source path → destination path; the human is the
+    transport layer, since writes stay home), and whose ball is in which court
+    for every open exchange. Rationale: Lathe sat blocked waiting on a notice
+    whose implementation step nobody had surfaced — ball state living only in
+    files inside two separate repos stalls invisibly. Also saved as a durable
+    cross-project preference in agent memory.
+
 22. **Orrery becomes the PROVIDER of the shared sequencer substrate; Lathe is
     its first consumer** (2026-07-23, human via Lathe L0 ratification; brief
     `lathe-2026-07-23-001` in `integrations/lathe/`). Response summary:
