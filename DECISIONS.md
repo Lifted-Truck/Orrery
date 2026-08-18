@@ -494,7 +494,8 @@ history; supersede with a new numbered entry.
     was genuinely ungated — including on **2026-07-29, when it was made PUBLIC**.
     That publication was covered only by a hand-run audit (107 files, clean); it
     is now covered by a gate that runs on every `./verify fast`. Proven to FIRE,
-    not merely present: a planted `/Users/somebody/private` is reported and turns
+    not merely present: a planted identity path (written here as `/Users/<name>/...` — the prose
+    placeholder form the gate deliberately exempts) is reported and turns
     the run red; a tampered `.kit/` is caught by `kit_integrity`; a missing
     `.kit/` hard-exits instead of degrading green.
     **Our `record()` was the kit's shape, adapted, so it was deleted** per the
@@ -509,3 +510,34 @@ history; supersede with a new numbered entry.
     kit notice's explicit instruction. Every project gate and test command was
     kept byte-identical; nothing of ours was dropped except the adapted
     `record()`.
+
+28. **PR workflow adopted; and an owned failure — I committed on RED last round**
+    (2026-08-18, human: "let's switch to a PR workflow").
+    **The workflow.** Work lands on a branch → PR → merge; `main` is not
+    committed to directly. This matches the sibling station (Lathe has worked
+    this way since its L0) and makes the fleet uniform. To make a PR mean
+    something, Orrery also gains **CI** (`.github/workflows/ci.yml`) running
+    `./verify fast` on every push and PR — the repo had none, so until now a PR
+    would have been ceremony with nothing gating it. `verify fast` is fully
+    self-contained (no network: JUCE is only needed by `full`'s plugin build,
+    which stays macOS-only and human-run), so it runs clean on ubuntu.
+    Two CI-hostile defects back-ported from the sibling while enabling it
+    (**protected-path edit to `./verify`, flagged** — both strengthen the gate,
+    neither weakens it): job count now prefers `nproc` before macOS `sysctl`
+    (which silently left CI at the 4-job fallback), and `core_build` now replays
+    the tool's FULL stdout+stderr on failure instead of discarding it — the
+    swallowing form reduced a real failure to "cmake configure failed" in Lathe
+    and cost a local reproduction (its DECISIONS #16).
+    **The failure, stated plainly.** Last round's kit-migration commit
+    (`fcb47c8`) was made with a RED oracle and I did not notice. My own
+    DECISIONS #27 text quoted the planted identity path *literally* as evidence,
+    which the newly-installed `leak_gate` correctly flagged — and my command
+    chained `./verify fast … && echo GREEN; git commit …` with a `;`, so the
+    commit ran regardless and the absent GREEN line went unread. Two lessons,
+    both mine: (a) the charter's "a red oracle halts forward work" is only real
+    if the exit status GATES the commit — never `;`, always `&&`; (b) prose
+    *about* the leak pattern must use the exempted placeholder form
+    (`/Users/<name>/`), which the kit gate documents precisely because the gate
+    greps itself. The gate working correctly on its first real outing is the
+    silver lining; that it caught its own installer's paperwork is a good sign,
+    not a false positive.

@@ -98,8 +98,14 @@ transport variant (Kuramoto → free-transport) or introduces a new output kind
 (Torus → native pitch) is a contract-change proposal, not just a new
 territory — record it in DECISIONS and gate the build on the contract change.
 
+## Workflow (PR-based since 2026-08-18, DECISIONS #28)
+Work lands on a branch → PR → merge; **never commit directly to `main`.** CI
+(`.github/workflows/ci.yml`) runs `./verify fast` on every push and PR — green
+in CI == green locally. A red oracle HALTS forward work: gate the commit on the
+exit status (`./verify fast && git commit …`), never chain with `;`.
+
 ## Human gates
 Deleting files, changing the contract (`sequencer-studio-architecture.md`),
 editing `./verify` or acceptance tests, adding a dependency, anything outward-
-facing. And: **do not begin Coupled Rings implementation** — its spec is not
+facing (pushes, PR merges, repo visibility). And: **do not begin Coupled Rings implementation** — its spec is not
 yet written (prototype only). Writing that spec is its own gated task.

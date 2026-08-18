@@ -30,15 +30,32 @@ fi
 BUILD_DIR="$ROOT/build"
 
 # Framework-free core: configure (once), build (absolute path), run ctest.
+#
+# On FAILURE the tool's own stdout+stderr is replayed IN FULL (from
+# .harness/core_build.log); on success it stays quiet. Both streams used to go
+# to /dev/null, which in the sibling station reduced a real CI failure to the
+# single useless line "cmake configure failed" and cost a local reproduction to
+# diagnose (Lathe DECISIONS #16). Do NOT re-silence these.
 core_build() {
   local rc=0
   command -v cmake >/dev/null 2>&1 || { echo "verify: cmake not found" >&2; return 1; }
+  local log="$HARNESS_DIR/core_build.log"
+  # nproc (Linux/CI) first, then macOS sysctl, then 4. sysctl alone silently
+  # left CI building at the fallback job count.
+  local jobs; jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
   if [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
-    cmake -S "$ROOT" -B "$BUILD_DIR" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug \
-      >/dev/null 2>&1 || { echo "verify: cmake configure failed" >&2; return 1; }
+    if ! cmake -S "$ROOT" -B "$BUILD_DIR" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug >"$log" 2>&1; then
+      echo "verify: cmake configure FAILED — full output follows:" >&2
+      cat "$log" >&2
+      return 1
+    fi
   fi
-  cmake --build "$BUILD_DIR" -j"$(sysctl -n hw.ncpu 2>/dev/null || echo 4)" \
-    >/dev/null 2>&1 || { echo "verify: core build failed" >&2; return 1; }
+  if ! cmake --build "$BUILD_DIR" -j"$jobs" >"$log" 2>&1; then
+    echo "verify: core build FAILED — full output follows:" >&2
+    cat "$log" >&2
+    return 1
+  fi
   ( cd "$BUILD_DIR" && ctest --output-on-failure ) || rc=1
   return $rc
 }
