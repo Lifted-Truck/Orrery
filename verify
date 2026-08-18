@@ -16,14 +16,18 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 TARGET="${1:-fast}"; HARNESS_DIR=".harness"; mkdir -p "$HARNESS_DIR"
-BUILD_DIR="$ROOT/build"
 
-record() {
-  local h; h=$(git rev-parse --short HEAD 2>/dev/null || echo no-git)
-  printf '{"target":"%s","exit":%d,"git":"%s","ts":"%s","stage":"O1-core-build"}\n' \
-    "$1" "$2" "$h" "$(date -u +%FT%TZ)" > "$HARNESS_DIR/last-verify.json"
-  return "$2"
-}
+# Kit-owned gates (kit 2.4.0), vendored + sha256-pinned in .kit/ — `record`,
+# `leak_gate`, `kit_integrity`. HARD EXIT if absent: a silently skipped privacy
+# gate is the exact bug the gate exists to prevent, so a missing .kit/ must
+# never degrade into a green run.
+if [ -r .kit/kit-gates.sh ]; then
+  . .kit/kit-gates.sh
+else
+  echo "verify: .kit/kit-gates.sh missing — run kit_sync.py (gates cannot be skipped)" >&2
+  exit 1
+fi
+BUILD_DIR="$ROOT/build"
 
 # Framework-free core: configure (once), build (absolute path), run ctest.
 core_build() {
@@ -43,6 +47,11 @@ fast() {
   # O0 structural gate: charter + contract + every declared territory present,
   # each engine territory has a sub-charter, manifest is valid JSON.
   local ok=0
+  # Kit-owned gates first: .kit/ integrity (are the vendored gates the pinned
+  # ones?) then the privacy/leak gate. Both are advisory-to-ok so every project
+  # gate below still RUNS and reports — we want the full picture, not first-fail.
+  kit_integrity || ok=1
+  leak_gate     || ok=1
   for f in CLAUDE.md ROADMAP.md DECISIONS.md project.manifest.json \
            sequencer-studio-architecture.md; do
     [ -f "$f" ] || { echo "verify: missing $f" >&2; ok=1; }

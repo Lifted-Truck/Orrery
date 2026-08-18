@@ -480,3 +480,32 @@ history; supersede with a new numbered entry.
     Rejected: extracting a shared repo now (overhead at 2 consumers, both
     local); forcing LATHE through the latch seam (breaks T=0 fidelity + the
     sub-tick groove — Lathe DECISIONS #12's Procrustean warning).
+
+27. **Kit 2.4.0 — vendored kit-owned gates; Orrery had NO leak gate at all**
+    (2026-08-18, kit notice; migrator refused this repo, wired by hand).
+    `.kit/kit-gates.sh` + `.kit/MANIFEST` installed by `kit_sync.py`, sourced
+    from `./verify` with a **HARD EXIT** when absent (a silently skipped privacy
+    gate is precisely the bug the gate prevents); `kit_integrity` + `leak_gate`
+    run FIRST in `fast()`, both folding into `ok` so every project gate still
+    RUNS and reports rather than first-failing.
+    **Why the migrator refused us — and the finding that matters: this repo had
+    no `leak_gate()` whatsoever**, and no `kit_version` either. So Orrery was
+    never *claiming* a gate it lacked (unlike the nine drifted copies), but it
+    was genuinely ungated — including on **2026-07-29, when it was made PUBLIC**.
+    That publication was covered only by a hand-run audit (107 files, clean); it
+    is now covered by a gate that runs on every `./verify fast`. Proven to FIRE,
+    not merely present: a planted `/Users/somebody/private` is reported and turns
+    the run red; a tampered `.kit/` is caught by `kit_integrity`; a missing
+    `.kit/` hard-exits instead of degrading green.
+    **Our `record()` was the kit's shape, adapted, so it was deleted** per the
+    notice — but the adaptation is itself a finding: it hardcoded
+    `"stage":"O1-core-build"` and had been **stale for months** (this repo is at
+    contract v1.2 with three engines shipped). The kit's `record()` omits
+    `stage` entirely, which is the right call; adopting it silently retired a
+    harness that was lying about itself. Lathe hit the identical defect
+    independently (its DECISIONS #17) and derived the label instead — two repos,
+    one defect class, reported upward.
+    **PROTECTED-PATH EDIT, FLAGGED:** `./verify` changed (human-gated), at the
+    kit notice's explicit instruction. Every project gate and test command was
+    kept byte-identical; nothing of ours was dropped except the adapted
+    `record()`.
