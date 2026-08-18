@@ -1,0 +1,35 @@
+# CI — runs the project's ONE oracle (./verify) on every push and PR, mirroring
+# the local gate. Not new checks: green here == green locally.
+#
+# `verify fast` is the gate and is fully SELF-CONTAINED — kit gates, structural
+# gate, then the framework-free core build + ctest. It pulls nothing from the
+# network (JUCE is only needed by `verify full`'s plugin build, which stays
+# macOS-only and human-run per the global CLAUDE.md build gotchas: auval,
+# codesign re-seal, install to ~/Library).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      # Toolchain floor for verify's core_build. The runner image ships cmake +
+      # g++; asserting it means a future image change fails loudly rather than
+      # silently un-gating the build.
+      - name: assert cmake + C++ toolchain
+        run: cmake --version && c++ --version
+
+      - name: verify fast
+        run: ./verify fast
