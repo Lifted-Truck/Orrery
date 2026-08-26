@@ -43,7 +43,7 @@ any cell you've touched**. Your edits are pins; the generators flow around them.
 That coexistence rule is the heart of the design, and it's why the lane shows
 locks.
 
-![The offset lane — pinned cells and generators](docs/img/orrery-offset-lane.png)
+![The offset lane — the walk generator writing per-source transpose](docs/img/orrery-offset-lane.png)
 
 ## Determinism is the substrate
 
