@@ -53,7 +53,11 @@ endfunction()
 
 # ── Instrument: internal voices + MIDI-out (cross-track routing / virtual port).
 juce_add_plugin(Orrery
-    COMPANY_NAME              "Lifted Truck"
+    COMPANY_NAME              "Mindlathe"
+    # BUNDLE_ID pinned to the value JUCE previously derived from COMPANY_NAME, so the
+    # vendor rename (2026-09-27) changes only what hosts DISPLAY. Identity lives in
+    # PLUGIN_MANUFACTURER_CODE + PLUGIN_CODE (the VST3 class ID and AU codes); never edit those.
+    BUNDLE_ID                 "com.Lifted Truck.Orrery"
     PLUGIN_MANUFACTURER_CODE  Lftk
     PLUGIN_CODE               Orry
     FORMATS                   VST3 AU Standalone
@@ -71,7 +75,11 @@ orrery_configure_plugin(Orrery)
 # the virtual CoreMIDI port are inert here (feeds the in-track instrument
 # directly). Distinct PLUGIN_CODE so hosts see it as a separate device.
 juce_add_plugin(OrreryMFX
-    COMPANY_NAME              "Lifted Truck"
+    COMPANY_NAME              "Mindlathe"
+    # BUNDLE_ID pinned to the value JUCE previously derived from COMPANY_NAME, so the
+    # vendor rename (2026-09-27) changes only what hosts DISPLAY. Identity lives in
+    # PLUGIN_MANUFACTURER_CODE + PLUGIN_CODE (the VST3 class ID and AU codes); never edit those.
+    BUNDLE_ID                 "com.Lifted Truck.OrreryMFX"
     PLUGIN_MANUFACTURER_CODE  Lftk
     PLUGIN_CODE               OrrM
     FORMATS                   VST3 AU
